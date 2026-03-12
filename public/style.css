@@ -416,6 +416,60 @@ main {
   color: var(--text-secondary);
 }
 
+/* Tide */
+.tide-area:empty {
+  display: none;
+}
+
+.tide-area {
+  margin-top: 0.5rem;
+}
+
+.tide-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.2rem;
+}
+
+.tide-current {
+  font-size: 0.6rem;
+  color: var(--text-tertiary);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.tide-svg {
+  width: 100%;
+  height: 40px;
+  display: block;
+}
+
+.tide-fill {
+  fill: rgba(10,132,255,0.08);
+}
+
+.tide-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  opacity: 0.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.tide-now {
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  opacity: 0.8;
+  vector-effect: non-scaling-stroke;
+}
+
+.tide-label {
+  font-size: 3.5px;
+  fill: var(--text-tertiary);
+  text-anchor: middle;
+}
+
 /* Cam area */
 .cam-area:empty {
   display: none;

@@ -268,6 +268,7 @@
       </div>
       <div class="sl-conditions" data-spot-id="${spot.id}"></div>
       ${timelineHtml}
+      <div class="tide-area"></div>
       <div class="cam-area" data-spot-id="${spot.id}"></div>`;
 
     return { card, rating: ratingVal };
@@ -462,9 +463,94 @@
     if (window.lucide) lucide.createIcons();
   });
 
+  // --- Tide chart ---
+  async function loadTides() {
+    try {
+      const res = await fetch('/api/tides');
+      const data = await res.json();
+      if (!data.hourly || !data.hilo) return;
+
+      const now = Date.now() / 1000;
+      const end = now + 48 * 3600;
+      const hourly = data.hourly.filter(t => t.timestamp >= now - 1800 && t.timestamp <= end);
+      const hilo = data.hilo.filter(t => t.timestamp >= now - 1800 && t.timestamp <= end);
+
+      if (hourly.length === 0) return;
+
+      const heights = hourly.map(t => t.height);
+      const minH = Math.min(...heights);
+      const maxH = Math.max(...heights);
+      const range = maxH - minH || 1;
+
+      // Build SVG path
+      const w = 300, h = 32, pad = 2;
+      const points = hourly.map((t, i) => {
+        const x = (i / (hourly.length - 1)) * w;
+        const y = pad + (1 - (t.height - minH) / range) * (h - pad * 2);
+        return `${x},${y}`;
+      });
+      const pathD = 'M' + points.join(' L');
+
+      // Fill area
+      const fillD = pathD + ` L${w},${h} L0,${h} Z`;
+
+      // Now marker position
+      let nowX = 0;
+      for (let i = 0; i < hourly.length; i++) {
+        if (hourly[i].timestamp >= now) {
+          const prev = i > 0 ? hourly[i-1] : hourly[i];
+          const frac = (now - prev.timestamp) / (hourly[i].timestamp - prev.timestamp || 1);
+          nowX = ((i - 1 + frac) / (hourly.length - 1)) * w;
+          break;
+        }
+      }
+
+      // Hi/lo labels
+      const labels = hilo.map(t => {
+        const idx = hourly.findIndex(h => h.timestamp >= t.timestamp);
+        if (idx < 0) return '';
+        const x = (idx / (hourly.length - 1)) * w;
+        const y = t.type === 'H' ? pad - 1 : h + 10;
+        const timeStr = new Date(t.timestamp * 1000).toLocaleString('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hour12: true });
+        const label = `${t.height.toFixed(1)}ft`;
+        return `<text x="${x}" y="${y}" class="tide-label">${timeStr} ${label}</text>`;
+      }).join('');
+
+      const svg = `<svg viewBox="0 0 ${w} ${h + 14}" class="tide-svg" preserveAspectRatio="none">
+        <path d="${fillD}" class="tide-fill"/>
+        <path d="${pathD}" class="tide-line"/>
+        <line x1="${nowX}" y1="0" x2="${nowX}" y2="${h}" class="tide-now"/>
+        ${labels}
+      </svg>`;
+
+      // Current tide height
+      let currentHeight = heights[0];
+      let currentType = '';
+      for (let i = 0; i < hourly.length; i++) {
+        if (hourly[i].timestamp >= now) { currentHeight = hourly[i].height; break; }
+      }
+      // Find next hi/lo
+      const nextHL = hilo.find(t => t.timestamp > now);
+      if (nextHL) {
+        currentType = nextHL.type === 'H' ? 'Rising' : 'Falling';
+      }
+
+      const tideHtml = `
+        <div class="tide-label-row">
+          <span class="timeline-label">Tide</span>
+          <span class="tide-current">${currentHeight.toFixed(1)}ft ${currentType}</span>
+        </div>
+        ${svg}`;
+
+      document.querySelectorAll('.tide-area').forEach(el => {
+        el.innerHTML = tideHtml;
+      });
+    } catch (e) { console.warn('Tide load failed', e); }
+  }
+
   // --- Init ---
   updateClock();
   setInterval(updateClock, 60000);
-  loadData().then(() => { loadSurflineData(); });
+  loadData().then(() => { loadSurflineData(); loadTides(); });
   setInterval(loadData, REFRESH_INTERVAL);
 })();

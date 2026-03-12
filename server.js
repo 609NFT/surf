@@ -160,6 +160,33 @@ const server = http.createServer(async (req, res) => {
     }
     return;
   }
+  if (pathname === '/api/tides') {
+    const ck = 'tides';
+    const cached = getCache(ck);
+    if (cached) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(cached)); return; }
+    try {
+      const today = new Date();
+      const end = new Date(today.getTime() + 3 * 86400000);
+      const fmt = d => d.toISOString().slice(0,10).replace(/-/g,'');
+      const [hourlyRes, hiloRes] = await Promise.all([
+        fetchJSON(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${fmt(today)}&end_date=${fmt(end)}&station=9410230&product=predictions&datum=MLLW&time_zone=gmt&units=english&interval=h&format=json`),
+        fetchJSON(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${fmt(today)}&end_date=${fmt(end)}&station=9410230&product=predictions&datum=MLLW&time_zone=gmt&units=english&interval=hilo&format=json`)
+      ]);
+      const data = {
+        station: '9410230',
+        name: 'La Jolla (Scripps)',
+        hourly: (hourlyRes.predictions || []).map(p => ({ time: p.t + ' UTC', timestamp: new Date(p.t + 'Z').getTime() / 1000, height: parseFloat(p.v) })),
+        hilo: (hiloRes.predictions || []).map(p => ({ time: p.t + ' UTC', timestamp: new Date(p.t + 'Z').getTime() / 1000, height: parseFloat(p.v), type: p.type }))
+      };
+      setCache(ck, data);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(data));
+    } catch (e) {
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to fetch tides' }));
+    }
+    return;
+  }
   if (pathname === '/api/spots') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(SPOTS));
