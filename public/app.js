@@ -257,7 +257,6 @@
       </div>
       <div class="sl-conditions" data-spot-id="${spot.id}"></div>
       ${timelineHtml}
-      <div class="tide-area"></div>
       <div class="cam-area" data-spot-id="${spot.id}"></div>`;
 
     return { card, rating: ratingVal };
@@ -513,9 +512,7 @@
           ${svg}
         </div>`;
 
-      document.querySelectorAll('.tide-area').forEach(el => {
-        el.innerHTML = tideHtml;
-      });
+      document.getElementById('tide-global').innerHTML = tideHtml;
     } catch (e) { console.warn('Tide load failed', e); }
   }
 
