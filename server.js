@@ -162,7 +162,7 @@ const server = http.createServer(async (req, res) => {
   }
   if (pathname === '/api/tides') {
     const ck = 'tides';
-    const cached = getCache(ck);
+    const cached = getCached(ck);
     if (cached) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(cached)); return; }
     try {
       const today = new Date();
