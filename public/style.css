@@ -241,6 +241,22 @@ main {
   gap: 1rem;
   margin-bottom: 0.6rem;
   font-size: 0.85rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.cam-link {
+  font-size: 0.7rem;
+  color: var(--teal);
+  text-decoration: none;
+  opacity: 0.7;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.cam-link:hover {
+  opacity: 1;
+  text-decoration: underline;
 }
 
 .stat {

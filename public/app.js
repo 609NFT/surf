@@ -96,6 +96,7 @@
 
     const slug = slugify(spot.name);
     const surflineUrl = `https://www.surfline.com/surf-report/${slug}/${spot.id}`;
+    const camUrl = `https://www.surfline.com/surf-report/${slug}/${spot.id}#cam`;
 
     // Wave info
     let waveStr = '—';
@@ -166,6 +167,7 @@
         <div class="stat"><span class="stat-icon">🌊</span><span class="stat-value">${waveStr}</span></div>
         ${swellStr ? `<div class="stat"><span class="stat-icon">〰️</span><span class="stat-value">${swellStr}</span></div>` : ''}
         <div class="stat"><span class="stat-icon">💨</span><span class="stat-value">${windStr}</span></div>
+        <a href="${camUrl}" target="_blank" class="cam-link">📷 Cam</a>
       </div>
       ${timelineHtml}`;
 
