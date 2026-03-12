@@ -82,8 +82,8 @@ async function fetchAllForecasts() {
   const results = await Promise.all(uq.map(async (c) => {
     try {
       const [m, w] = await Promise.all([
-        fetchJSON(`https://marine-api.open-meteo.com/v1/marine?latitude=${c.lat}&longitude=${c.lon}&hourly=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction&timezone=America/Los_Angeles&forecast_days=3`),
-        fetchJSON(`https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lon}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m&timezone=America/Los_Angeles&forecast_days=3&wind_speed_unit=kn`)
+        fetchJSON(`https://marine-api.open-meteo.com/v1/marine?latitude=${c.lat}&longitude=${c.lon}&hourly=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction&timezone=GMT&forecast_days=3`),
+        fetchJSON(`https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lon}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m&timezone=GMT&forecast_days=3&wind_speed_unit=kn`)
       ]);
       return { key: c.key, marine: m, weather: w };
     } catch (e) { return { key: c.key, marine: null, weather: null, error: e.message }; }
@@ -99,7 +99,8 @@ async function fetchAllForecasts() {
       const ws = wr.wind_speed_10m?.[i], wdr = wr.wind_direction_10m?.[i], wg = wr.wind_gusts_10m?.[i];
       const ph = sh || wh || 0, pp = sp || wp || 0;
       const whf = ph * 3.28084, twf = (wh || 0) * 3.28084;
-      return { time: t, timestamp: new Date(t).getTime() / 1000, waveHeight: twf, swellHeight: whf, wavePeriod: pp, waveDir: wd, swellDir: sd, windSpeed: ws, windDir: wdr, windGusts: wg, rating: calculateRating(whf, pp, ws, wdr) };
+      const isoTime = t.endsWith('Z') ? t : t + 'Z';
+      return { time: isoTime, timestamp: new Date(isoTime).getTime() / 1000, waveHeight: twf, swellHeight: whf, wavePeriod: pp, waveDir: wd, swellDir: sd, windSpeed: ws, windDir: wdr, windGusts: wg, rating: calculateRating(whf, pp, ws, wdr) };
     });
     return { ...s, forecast: { hourly } };
   });
