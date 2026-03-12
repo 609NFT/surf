@@ -194,7 +194,7 @@ main {
   left: 0.75rem;
   font-size: 1.4rem;
   font-weight: 700;
-  color: rgba(10,132,255,0.2);
+  color: rgba(10,132,255,0.45);
   line-height: 1;
   pointer-events: none;
   font-variant-numeric: tabular-nums;
