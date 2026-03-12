@@ -113,6 +113,20 @@
     return `https://camstills.cdn-surfline.com/${alias}/latest_small_pixelated.png`;
   }
 
+  async function loadForecastText() {
+    try {
+      const r = await fetch('/api/forecast-text');
+      const d = await r.json();
+      if (!d.headline) return;
+      const el = document.getElementById('forecast-text');
+      el.innerHTML = `
+        ${d.dayToWatch ? '<span class="day-to-watch">Day to Watch</span>' : ''}
+        <div class="forecast-headline">${d.headline}</div>
+        <div class="forecast-observation">${d.observation}</div>
+        <div class="forecast-meta">${d.forecaster ? d.forecaster + ' · ' : ''}${d.subregion || 'North San Diego'}</div>`;
+    } catch (e) { /* no forecast text */ }
+  }
+
   // Check for synced Surfline data and overlay it
   async function loadSurflineOverlay() {
     try {
@@ -646,6 +660,6 @@
   });
 
   // --- Init ---
-  loadData().then(() => { loadSurflineData(); loadTides(); loadSurflineOverlay(); });
+  loadData().then(() => { loadSurflineData(); loadTides(); loadSurflineOverlay(); loadForecastText(); });
   setInterval(loadData, REFRESH_INTERVAL);
 })();

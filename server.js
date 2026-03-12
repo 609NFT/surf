@@ -426,6 +426,30 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify(data ? { synced: true, spots: data } : { synced: false }));
     return;
   }
+  if (pathname === '/api/forecast-text') {
+    const ck = 'forecast-text'; const cd = getCached(ck);
+    if (cd) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(cd)); return; }
+    try {
+      const slUrl = `https://services.surfline.com/kbyg/forecast-content?days=2&subregionId=58581a836630e24c44878fd7&accesstoken=${SURFLINE_TOKEN}`;
+      const data = await fetchJSON(`${CF_PROXY}/proxy?url=${encodeURIComponent(slUrl)}`);
+      const today = data.today?.forecast || {};
+      const result = {
+        headline: today.headline || '',
+        observation: (today.observation || '').replace(/<br\s*\/?>/g, '\n').replace(/<[^>]+>/g, ''),
+        forecaster: data.forecaster?.name || '',
+        dayToWatch: today.dayToWatch || false,
+        date: data.today?.date || '',
+        subregion: data.subregion?.name || ''
+      };
+      setCache(ck, result);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(result));
+    } catch (e) {
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
   if (pathname === '/api/spots') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(SPOTS));
