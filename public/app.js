@@ -20,11 +20,12 @@
   // Fetch Surfline spot report (conditions + cameras)
   async function fetchSurflineReport(spotId) {
     const token = await getSLToken();
-    if (!token) return null;
+    if (!token) { console.warn('No SL token'); return null; }
     try {
       const r = await fetch(`https://services.surfline.com/kbyg/spots/reports?spotId=${spotId}&accesstoken=${token}`);
-      if (!r.ok) return null;
+      if (!r.ok) { console.warn('SL report', spotId, r.status); return null; }
       const d = await r.json();
+      console.log('SL report for', spotId, '- cameras:', (d.cameras||[]).length, '- keys:', Object.keys(d));
 
       // Extract conditions
       const conds = d.forecast?.conditions?.conditions;
@@ -193,7 +194,6 @@
 
     card.innerHTML = `
       <div class="rank-number"></div>
-      <div class="cam-area" data-spot-id="${spot.id}"></div>
       <div class="card-header">
         <div class="spot-name"><a href="${surflineUrl}" target="_blank">${spot.name}</a></div>
         <span class="rating-badge rating-${ratingClass}">${ratingLabel}</span>
@@ -203,10 +203,10 @@
         <div class="stat"><i data-lucide="waves" class="stat-icon"></i><span class="stat-value">${waveStr}</span></div>
         ${swellStr ? `<div class="stat"><i data-lucide="activity" class="stat-icon"></i><span class="stat-value">${swellStr}</span></div>` : ''}
         <div class="stat"><i data-lucide="wind" class="stat-icon"></i><span class="stat-value">${windStr}</span></div>
-        <a href="${camUrl}" target="_blank" class="cam-link"><i data-lucide="camera" class="cam-icon"></i> Cam</a>
       </div>
       <div class="sl-conditions" data-spot-id="${spot.id}"></div>
-      ${timelineHtml}`;
+      ${timelineHtml}
+      <div class="cam-area" data-spot-id="${spot.id}"></div>`;
 
     return { card, rating: ratingVal };
   }
@@ -263,40 +263,92 @@
     const camAreas = document.querySelectorAll('.cam-area[data-spot-id]');
     const condAreas = document.querySelectorAll('.sl-conditions[data-spot-id]');
 
-    // Build a map of condition elements by spotId
     const condMap = {};
     condAreas.forEach(el => { condMap[el.dataset.spotId] = el; });
 
-    for (const camEl of camAreas) {
-      const spotId = camEl.dataset.spotId;
-      const report = await fetchSurflineReport(spotId);
-      if (!report) continue;
+    // Fetch all reports in parallel (batches of 4 to be nice)
+    const spots = Array.from(camAreas).map(el => el.dataset.spotId);
+    const batchSize = 4;
+    for (let i = 0; i < spots.length; i += batchSize) {
+      const batch = spots.slice(i, i + batchSize);
+      const results = await Promise.all(batch.map(id => fetchSurflineReport(id).then(r => [id, r])));
 
-      // Populate headline
-      const condEl = condMap[spotId];
-      if (condEl && report.headline) {
-        condEl.innerHTML = `<div class="sl-headline">${report.headline}</div>`;
-      }
+      for (const [spotId, report] of results) {
+        if (!report) continue;
 
-      // Populate cam still
-      if (report.cameras.length > 0) {
-        const cam = report.cameras[0];
-        const still = cam.stillUrlFull || cam.stillUrl;
-        const stream = cam.streamUrl;
-        if (still) {
-          const camCount = report.cameras.length;
-          const camLabel = camCount > 1 ? `${camCount} cams` : '1 cam';
-          camEl.innerHTML = `
-            <div class="cam-wrapper" data-stream="${stream || ''}" data-spot-id="${spotId}">
-              <img src="${still}" alt="${cam.title}" class="cam-still" loading="lazy" onerror="this.parentElement.parentElement.style.display='none'">
-              <div class="cam-badge">${camLabel}</div>
-              ${stream ? '<div class="cam-play"><i data-lucide="play" class="play-icon"></i></div>' : ''}
-            </div>`;
-          if (window.lucide) lucide.createIcons();
+        // Populate headline
+        const condEl = condMap[spotId];
+        if (condEl && report.headline) {
+          condEl.innerHTML = `<div class="sl-headline">${report.headline}</div>`;
         }
+
+        // Populate cam carousel
+        const camEl = document.querySelector(`.cam-area[data-spot-id="${spotId}"]`);
+        const cams = report.cameras;
+        if (!camEl || cams.length === 0) continue;
+
+        const slides = cams.map((cam, idx) => {
+          const still = cam.stillUrlFull || cam.stillUrl;
+          const stream = cam.streamUrl || '';
+          const title = cam.title || '';
+          return `<div class="cam-slide ${idx === 0 ? 'active' : ''}" data-index="${idx}" data-stream="${stream}">
+            <img src="${still}" alt="${title}" class="cam-still" loading="lazy" onerror="this.closest('.cam-slide').style.display='none'">
+            <div class="cam-title">${title.replace(/^SD - /, '')}</div>
+            ${stream ? '<div class="cam-play"><i data-lucide="play" class="play-icon"></i></div>' : ''}
+          </div>`;
+        }).join('');
+
+        const arrows = cams.length > 1 ? `
+          <button class="cam-arrow cam-arrow-left" data-dir="-1"><i data-lucide="chevron-left"></i></button>
+          <button class="cam-arrow cam-arrow-right" data-dir="1"><i data-lucide="chevron-right"></i></button>
+          <div class="cam-dots">${cams.map((_, idx) => `<span class="cam-dot ${idx === 0 ? 'active' : ''}" data-index="${idx}"></span>`).join('')}</div>
+        ` : '';
+
+        camEl.innerHTML = `<div class="cam-carousel" data-count="${cams.length}">${slides}${arrows}</div>`;
       }
     }
+    if (window.lucide) lucide.createIcons();
   }
+
+  // --- Cam carousel navigation ---
+  document.addEventListener('click', function(e) {
+    const arrow = e.target.closest('.cam-arrow');
+    if (arrow) {
+      e.stopPropagation();
+      const carousel = arrow.closest('.cam-carousel');
+      const slides = carousel.querySelectorAll('.cam-slide');
+      const dots = carousel.querySelectorAll('.cam-dot');
+      const current = carousel.querySelector('.cam-slide.active');
+      const currentIdx = parseInt(current.dataset.index);
+      const dir = parseInt(arrow.dataset.dir);
+      const nextIdx = (currentIdx + dir + slides.length) % slides.length;
+
+      // Stop any playing video
+      const video = current.querySelector('video');
+      if (video) { if (video._hls) video._hls.destroy(); video.remove(); current.querySelector('.cam-still').style.display = ''; }
+
+      current.classList.remove('active');
+      slides[nextIdx].classList.add('active');
+      dots.forEach(d => d.classList.toggle('active', parseInt(d.dataset.index) === nextIdx));
+      return;
+    }
+
+    const dot = e.target.closest('.cam-dot');
+    if (dot) {
+      e.stopPropagation();
+      const carousel = dot.closest('.cam-carousel');
+      const slides = carousel.querySelectorAll('.cam-slide');
+      const dots = carousel.querySelectorAll('.cam-dot');
+      const targetIdx = parseInt(dot.dataset.index);
+      const current = carousel.querySelector('.cam-slide.active');
+      const video = current.querySelector('video');
+      if (video) { if (video._hls) video._hls.destroy(); video.remove(); current.querySelector('.cam-still').style.display = ''; }
+      current.classList.remove('active');
+      slides[targetIdx].classList.add('active');
+      dots.forEach(d => d.classList.toggle('active', parseInt(d.dataset.index) === targetIdx));
+      return;
+    }
+  });
 
   // --- Live stream player ---
   document.addEventListener('click', function(e) {
