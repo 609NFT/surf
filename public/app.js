@@ -16,14 +16,45 @@
     'EPIC':          { color: '#0a84ff', cls: 'good', idx: 6 }
   };
 
+  // Interpolate hex colors
+  function lerpColor(a, b, t) {
+    const ah = parseInt(a.slice(1), 16), bh = parseInt(b.slice(1), 16);
+    const ar = (ah >> 16) & 0xff, ag = (ah >> 8) & 0xff, ab = ah & 0xff;
+    const br = (bh >> 16) & 0xff, bg = (bh >> 8) & 0xff, bb = bh & 0xff;
+    const r = Math.round(ar + (br - ar) * t);
+    const g = Math.round(ag + (bg - ag) * t);
+    const b2 = Math.round(ab + (bb - ab) * t);
+    return `rgb(${r},${g},${b2})`;
+  }
+
+  // Continuous color from rating value
+  // 0=dark, 1=red, 2=orange, 3=yellow, 4=yellow, 5=green, 6=green
+  const COLOR_STOPS = [
+    [0, '#1c1c1e'], [1, '#ff453a'], [2, '#ff9f0a'], [3, '#ffd60a'],
+    [4, '#ffd60a'], [5, '#30d158'], [6, '#30d158']
+  ];
+
+  function ratingToColor(val) {
+    if (val <= 0) return COLOR_STOPS[0][1];
+    if (val >= 6) return COLOR_STOPS[6][1];
+    for (let i = 0; i < COLOR_STOPS.length - 1; i++) {
+      if (val >= COLOR_STOPS[i][0] && val <= COLOR_STOPS[i + 1][0]) {
+        const t = (val - COLOR_STOPS[i][0]) / (COLOR_STOPS[i + 1][0] - COLOR_STOPS[i][0]);
+        return lerpColor(COLOR_STOPS[i][1], COLOR_STOPS[i + 1][1], t);
+      }
+    }
+    return '#1c1c1e';
+  }
+
   function getRatingInfo(h) {
     if (h && h.ratingKey && SL_RATING_MAP[h.ratingKey]) {
       const m = SL_RATING_MAP[h.ratingKey];
-      return { color: m.color, cls: m.cls, idx: m.idx, label: h.ratingKey.replace(/_/g, ' ') };
+      const val = (h.rating != null) ? h.rating : m.idx;
+      return { color: ratingToColor(val), cls: m.cls, idx: m.idx, label: h.ratingKey.replace(/_/g, ' ') };
     }
     const val = (h && h.rating) || 0;
     const clamped = Math.max(0, Math.min(6, Math.round(val)));
-    return { color: RATING_COLORS[clamped], cls: RATING_CLASSES[clamped], idx: clamped, label: RATING_LABELS[clamped] };
+    return { color: ratingToColor(val), cls: RATING_CLASSES[clamped], idx: clamped, label: RATING_LABELS[clamped] };
   }
   const DOT_CLASSES = ['', 'very-poor', 'poor', 'poor', 'fair', 'good', 'good'];
 
