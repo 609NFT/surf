@@ -308,6 +308,36 @@ const server = http.createServer(async (req, res) => {
     }
     return;
   }
+  // Surfline data sync endpoint - receives data from bookmarklet
+  if (pathname === '/api/surfline-sync' && req.method === 'POST') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      try {
+        const data = JSON.parse(body);
+        if (data.token !== SURFLINE_TOKEN) { res.writeHead(403); res.end('Forbidden'); return; }
+        setCache('surfline:data', data.spots);
+        console.log(`Surfline sync: received data for ${Object.keys(data.spots).length} spots`);
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ ok: true, spots: Object.keys(data.spots).length }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid data' }));
+      }
+    });
+    return;
+  }
+  if (pathname === '/api/surfline-sync' && req.method === 'OPTIONS') {
+    res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST', 'Access-Control-Allow-Headers': 'Content-Type' });
+    res.end();
+    return;
+  }
+  if (pathname === '/api/surfline-data') {
+    const data = getCached('surfline:data');
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(data ? { synced: true, spots: data } : { synced: false }));
+    return;
+  }
   if (pathname === '/api/spots') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(SPOTS));

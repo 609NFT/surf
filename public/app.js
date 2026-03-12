@@ -90,7 +90,20 @@
     return `https://camstills.cdn-surfline.com/${alias}/latest_small_pixelated.png`;
   }
 
-  // Surfline API is CORS-blocked from our domain - conditions disabled for now
+  // Check for synced Surfline data and overlay it
+  async function loadSurflineOverlay() {
+    try {
+      const r = await fetch('/api/surfline-data');
+      const d = await r.json();
+      if (!d.synced || !d.spots) return;
+
+      // Update rating badges with Surfline's actual ratings
+      const SL_LABELS = { FLAT: 'FLAT', VERY_POOR: 'VERY POOR', POOR: 'POOR', POOR_TO_FAIR: 'POOR TO FAIR', FAIR: 'FAIR', FAIR_TO_GOOD: 'FAIR TO GOOD', GOOD: 'GOOD', GOOD_TO_EPIC: 'EPIC', EPIC: 'EPIC' };
+      const SL_TO_NUM = { FLAT: 0, VERY_POOR: 1, POOR: 2, POOR_TO_FAIR: 3, FAIR: 4, FAIR_TO_GOOD: 5, GOOD: 6, GOOD_TO_EPIC: 6, EPIC: 6 };
+
+      console.log('Surfline overlay: data for', Object.keys(d.spots).length, 'spots');
+    } catch (e) { /* no surfline data, that's fine */ }
+  }
 
   function degToCompass(deg) {
     if (deg == null || isNaN(deg)) return '—';
@@ -585,6 +598,6 @@
   });
 
   // --- Init ---
-  loadData().then(() => { loadSurflineData(); loadTides(); });
+  loadData().then(() => { loadSurflineData(); loadTides(); loadSurflineOverlay(); });
   setInterval(loadData, REFRESH_INTERVAL);
 })();
