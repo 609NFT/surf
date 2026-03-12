@@ -5,6 +5,7 @@ const https = require('https');
 const url = require('url');
 
 const PORT = process.env.PORT || 4001;
+const SURFLINE_TOKEN = process.env.SURFLINE_TOKEN || 'e1d5672dc48ca4e553e619e8da48794aa9c10256';
 
 // --- Spot data ---
 const SPOTS = [
@@ -161,6 +162,11 @@ const server = http.createServer(async (req, res) => {
   if (pathname === '/api/spots') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(SPOTS));
+    return;
+  }
+  if (pathname === '/api/sl-config') {
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify({ t: SURFLINE_TOKEN }));
     return;
   }
 

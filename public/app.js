@@ -5,6 +5,60 @@
   const DOT_CLASSES = ['', 'very-poor', 'poor', 'poor', 'fair', 'good', 'good'];
 
   const REFRESH_INTERVAL = 15 * 60 * 1000;
+  let slToken = null;
+
+  async function getSLToken() {
+    if (slToken) return slToken;
+    try {
+      const r = await fetch('/api/sl-config');
+      const d = await r.json();
+      slToken = d.t;
+      return slToken;
+    } catch (e) { return null; }
+  }
+
+  // Fetch Surfline cam still for a spot
+  async function fetchCamStill(spotId) {
+    const token = await getSLToken();
+    if (!token) return null;
+    try {
+      const r = await fetch(`https://services.surfline.com/kbyg/cams/batch?spotId=${spotId}&accesstoken=${token}`);
+      if (!r.ok) return null;
+      const d = await r.json();
+      const cams = d.data || d.cameras || d;
+      if (Array.isArray(cams) && cams.length > 0) {
+        const cam = cams[0];
+        // Try still image first, then stream
+        const still = cam.stillUrl || cam.camera?.stillUrl || cam.lastPreviewStill;
+        const stream = cam.streamUrl || cam.camera?.streamUrl;
+        const title = cam.title || cam.camera?.title || '';
+        return { still, stream, title };
+      }
+      return null;
+    } catch (e) { return null; }
+  }
+
+  // Also fetch Surfline's own ratings
+  async function fetchSurflineRating(spotId) {
+    const token = await getSLToken();
+    if (!token) return null;
+    try {
+      const r = await fetch(`https://services.surfline.com/kbyg/spots/forecasts/rating?spotId=${spotId}&days=1&intervalHours=1&accesstoken=${token}`);
+      if (!r.ok) return null;
+      const d = await r.json();
+      const ratings = d.data?.rating || [];
+      if (ratings.length > 0) {
+        // Find current rating
+        const now = Date.now() / 1000;
+        let closest = ratings[0];
+        for (const r of ratings) {
+          if (Math.abs(r.timestamp - now) < Math.abs(closest.timestamp - now)) closest = r;
+        }
+        return closest.rating;
+      }
+      return null;
+    } catch (e) { return null; }
+  }
 
   function degToCompass(deg) {
     if (deg == null || isNaN(deg)) return '—';
@@ -158,6 +212,7 @@
 
     card.innerHTML = `
       <div class="rank-number"></div>
+      <div class="cam-container" data-spot-id="${spot.id}"></div>
       <div class="card-header">
         <div class="spot-name"><a href="${surflineUrl}" target="_blank">${spot.name}</a></div>
         <span class="rating-badge rating-${ratingClass}">${ratingLabel}</span>
@@ -219,9 +274,21 @@
     document.getElementById('current-time').textContent = formatPacificTime(new Date());
   }
 
+  // --- Load cam stills into cards ---
+  async function loadCamStills() {
+    const containers = document.querySelectorAll('.cam-container[data-spot-id]');
+    for (const el of containers) {
+      const spotId = el.dataset.spotId;
+      const cam = await fetchCamStill(spotId);
+      if (cam && cam.still) {
+        el.innerHTML = `<a href="https://www.surfline.com/surf-report/spot/${spotId}" target="_blank"><img src="${cam.still}" alt="Cam" class="cam-still" loading="lazy"></a>`;
+      }
+    }
+  }
+
   // --- Init ---
   updateClock();
   setInterval(updateClock, 60000);
-  loadData();
+  loadData().then(() => { loadCamStills(); });
   setInterval(loadData, REFRESH_INTERVAL);
 })();
