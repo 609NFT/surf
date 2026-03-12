@@ -17,28 +17,27 @@
     } catch (e) { return null; }
   }
 
-  // Fetch Surfline cam still for a spot
-  async function fetchCamStill(spotId) {
+  // Fetch Surfline conditions (human forecaster notes) for a spot
+  async function fetchSurflineConditions(spotId) {
     const token = await getSLToken();
     if (!token) return null;
     try {
-      const r = await fetch(`https://services.surfline.com/kbyg/cams/batch?spotId=${spotId}&accesstoken=${token}`);
+      const r = await fetch(`https://services.surfline.com/kbyg/spots/forecasts/conditions?spotId=${spotId}&days=1&accesstoken=${token}`);
       if (!r.ok) return null;
       const d = await r.json();
-      const cams = d.data || d.cameras || d;
-      if (Array.isArray(cams) && cams.length > 0) {
-        const cam = cams[0];
-        // Try still image first, then stream
-        const still = cam.stillUrl || cam.camera?.stillUrl || cam.lastPreviewStill;
-        const stream = cam.streamUrl || cam.camera?.streamUrl;
-        const title = cam.title || cam.camera?.title || '';
-        return { still, stream, title };
+      const conds = d.data?.conditions;
+      if (conds && conds.length > 0) {
+        return {
+          headline: conds[0].headline || '',
+          observation: conds[0].observation || '',
+          forecaster: conds[0].forecaster?.name || ''
+        };
       }
       return null;
     } catch (e) { return null; }
   }
 
-  // Also fetch Surfline's own ratings
+  // Fetch Surfline surf forecast (wave heights + ratings)
   async function fetchSurflineRating(spotId) {
     const token = await getSLToken();
     if (!token) return null;
@@ -48,7 +47,6 @@
       const d = await r.json();
       const ratings = d.data?.rating || [];
       if (ratings.length > 0) {
-        // Find current rating
         const now = Date.now() / 1000;
         let closest = ratings[0];
         for (const r of ratings) {
@@ -213,7 +211,6 @@
 
     card.innerHTML = `
       <div class="rank-number"></div>
-      <div class="cam-container" data-spot-id="${spot.id}"></div>
       <div class="card-header">
         <div class="spot-name"><a href="${surflineUrl}" target="_blank">${spot.name}</a></div>
         <span class="rating-badge rating-${ratingClass}">${ratingLabel}</span>
@@ -225,6 +222,7 @@
         <div class="stat"><i data-lucide="wind" class="stat-icon"></i><span class="stat-value">${windStr}</span></div>
         <a href="${camUrl}" target="_blank" class="cam-link"><i data-lucide="camera" class="cam-icon"></i> Cam</a>
       </div>
+      <div class="sl-conditions" data-spot-id="${spot.id}"></div>
       ${timelineHtml}`;
 
     return { card, rating: ratingVal };
@@ -277,14 +275,14 @@
     document.getElementById('current-time').textContent = formatPacificTime(new Date());
   }
 
-  // --- Load cam stills into cards ---
-  async function loadCamStills() {
-    const containers = document.querySelectorAll('.cam-container[data-spot-id]');
+  // --- Load Surfline conditions into cards ---
+  async function loadSurflineData() {
+    const containers = document.querySelectorAll('.sl-conditions[data-spot-id]');
     for (const el of containers) {
       const spotId = el.dataset.spotId;
-      const cam = await fetchCamStill(spotId);
-      if (cam && cam.still) {
-        el.innerHTML = `<a href="https://www.surfline.com/surf-report/spot/${spotId}" target="_blank"><img src="${cam.still}" alt="Cam" class="cam-still" loading="lazy"></a>`;
+      const conds = await fetchSurflineConditions(spotId);
+      if (conds && conds.headline) {
+        el.innerHTML = `<div class="sl-headline">${conds.headline}</div>`;
       }
     }
   }
@@ -292,6 +290,6 @@
   // --- Init ---
   updateClock();
   setInterval(updateClock, 60000);
-  loadData().then(() => { loadCamStills(); });
+  loadData().then(() => { loadSurflineData(); });
   setInterval(loadData, REFRESH_INTERVAL);
 })();

@@ -173,27 +173,20 @@ main {
   opacity: 0.5;
 }
 
-.cam-container {
-  margin: -1rem -1rem 0.75rem -1rem;
-  border-radius: 12px 12px 0 0;
-  overflow: hidden;
-  line-height: 0;
-}
-
-.cam-container:empty {
+.sl-conditions:empty {
   display: none;
 }
 
-.cam-still {
-  width: 100%;
-  height: auto;
-  display: block;
-  opacity: 0.9;
-  transition: opacity 0.2s;
-}
-
-.cam-still:hover {
-  opacity: 1;
+.sl-headline {
+  font-size: 0.72rem;
+  color: var(--gray);
+  font-style: italic;
+  line-height: 1.4;
+  margin-bottom: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  background: rgba(255,255,255,0.03);
+  border-radius: 6px;
+  border-left: 2px solid var(--teal);
 }
 
 .card-header {
