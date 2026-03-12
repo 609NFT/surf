@@ -156,6 +156,7 @@
     }
 
     card.innerHTML = `
+      <div class="rank-number"></div>
       <div class="card-header">
         <div class="spot-name"><a href="${surflineUrl}" target="_blank">${spot.name}</a></div>
         <span class="rating-badge rating-${ratingClass}">${ratingLabel}</span>
@@ -194,7 +195,11 @@
 
       // Sort by rating (best first)
       cards.sort((a, b) => b.rating - a.rating);
-      cards.forEach(({ card }) => grid.appendChild(card));
+      cards.forEach(({ card }, i) => {
+        const rankEl = card.querySelector('.rank-number');
+        if (rankEl) rankEl.textContent = i + 1;
+        grid.appendChild(card);
+      });
 
       document.getElementById('last-updated').textContent =
         `Updated ${formatPacificTime(new Date())}`;
