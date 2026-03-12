@@ -505,7 +505,7 @@
 
       const tideHtml = `
         <div class="tide-label-row">
-          <span class="timeline-label">Tide</span>
+          <span class="timeline-label">Tide (48h)</span>
           <span class="tide-current">${currentHeight.toFixed(1)}ft ${currentType}</span>
         </div>
         <div class="tide-chart-wrap">
