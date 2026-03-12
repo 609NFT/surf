@@ -9,10 +9,10 @@
     'VERY_POOR':     { color: '#ff453a', cls: 'very-poor', idx: 1 },
     'POOR':          { color: '#ff9f0a', cls: 'poor', idx: 2 },
     'POOR_TO_FAIR':  { color: '#ffd60a', cls: 'poor-to-fair', idx: 3 },
-    'FAIR':          { color: '#ffd60a', cls: 'fair', idx: 4 },
+    'FAIR':          { color: '#a8d844', cls: 'fair', idx: 4 },
     'FAIR_TO_GOOD':  { color: '#30d158', cls: 'fair-to-good', idx: 5 },
-    'GOOD':          { color: '#30d158', cls: 'good', idx: 6 },
-    'GOOD_TO_EPIC':  { color: '#30d158', cls: 'good', idx: 6 },
+    'GOOD':          { color: '#0a84ff', cls: 'good', idx: 6 },
+    'GOOD_TO_EPIC':  { color: '#0a84ff', cls: 'good', idx: 6 },
     'EPIC':          { color: '#0a84ff', cls: 'good', idx: 6 }
   };
 
@@ -31,7 +31,7 @@
   // 0=dark, 1=red, 2=orange, 3=yellow, 4=yellow, 5=green, 6=green
   const COLOR_STOPS = [
     [0, '#1c1c1e'], [1, '#ff453a'], [2, '#ff9f0a'], [3, '#ffd60a'],
-    [4, '#ffd60a'], [5, '#30d158'], [6, '#30d158']
+    [4, '#a8d844'], [5, '#30d158'], [6, '#0a84ff']
   ];
 
   function ratingToColor(val) {
