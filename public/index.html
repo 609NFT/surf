@@ -5,19 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>🌊 Encinitas Surf Forecast</title>
   <link rel="stylesheet" href="style.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌊</text></svg>">
 </head>
 <body>
   <header>
     <div class="header-content">
-      <h1>🌊 Encinitas Surf Forecast</h1>
+      <h1><i data-lucide="waves" style="display:inline;vertical-align:-3px;margin-right:6px;width:28px;height:28px;"></i>Encinitas Surf Forecast</h1>
       <div class="header-meta">
         <span id="current-time"></span>
         <span id="last-updated"></span>
       </div>
     </div>
     <div id="buoy-bar" class="buoy-bar hidden">
-      <div class="buoy-title">📡 Buoy 46224 — Oceanside Offshore</div>
+      <div class="buoy-title"><i data-lucide="radio" style="display:inline;vertical-align:-2px;margin-right:4px;width:14px;height:14px;"></i> Buoy 46224 — Oceanside Offshore</div>
       <div class="buoy-stats" id="buoy-stats"></div>
     </div>
   </header>
@@ -35,5 +36,6 @@
   </footer>
 
   <script src="app.js"></script>
+  <script>lucide.createIcons();</script>
 </body>
 </html>

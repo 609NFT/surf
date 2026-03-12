@@ -115,15 +115,16 @@
     bar.classList.remove('hidden');
 
     const items = [];
-    if (data.waveHeight) items.push({ label: 'Wave Ht', value: `${data.waveHeight} ft`, icon: '🌊' });
-    if (data.dominantPeriod) items.push({ label: 'Period', value: `${data.dominantPeriod}s`, icon: '⏱' });
-    if (data.waveDirection != null) items.push({ label: 'Direction', value: `${data.waveDirection}° ${degToCompass(data.waveDirection)}`, icon: '🧭' });
-    if (data.waterTemp) items.push({ label: 'Water', value: `${data.waterTemp}°F`, icon: '🌡' });
-    if (data.windSpeed) items.push({ label: 'Wind', value: `${data.windSpeed} kts ${degToCompass(data.windDir)}`, icon: '💨' });
+    if (data.waveHeight) items.push({ label: 'Wave Ht', value: `${data.waveHeight} ft`, icon: 'waves' });
+    if (data.dominantPeriod) items.push({ label: 'Period', value: `${data.dominantPeriod}s`, icon: 'timer' });
+    if (data.waveDirection != null) items.push({ label: 'Direction', value: `${data.waveDirection}° ${degToCompass(data.waveDirection)}`, icon: 'compass' });
+    if (data.waterTemp) items.push({ label: 'Water', value: `${data.waterTemp}°F`, icon: 'thermometer' });
+    if (data.windSpeed) items.push({ label: 'Wind', value: `${data.windSpeed} kts ${degToCompass(data.windDir)}`, icon: 'wind' });
 
     stats.innerHTML = items.map(i =>
-      `<div class="buoy-stat"><span>${i.icon}</span><span class="label">${i.label}</span><span class="value">${i.value}</span></div>`
+      `<div class="buoy-stat"><i data-lucide="${i.icon}" class="buoy-icon"></i><span class="label">${i.label}</span><span class="value">${i.value}</span></div>`
     ).join('');
+    if (window.lucide) lucide.createIcons();
   }
 
   // --- Render spot card ---
@@ -219,10 +220,10 @@
       </div>
       <div class="rating-dots">${dotsHtml}</div>
       <div class="card-stats">
-        <div class="stat"><span class="stat-icon">🌊</span><span class="stat-value">${waveStr}</span></div>
-        ${swellStr ? `<div class="stat"><span class="stat-icon">〰️</span><span class="stat-value">${swellStr}</span></div>` : ''}
-        <div class="stat"><span class="stat-icon">💨</span><span class="stat-value">${windStr}</span></div>
-        <a href="${camUrl}" target="_blank" class="cam-link">📷 Cam</a>
+        <div class="stat"><i data-lucide="waves" class="stat-icon"></i><span class="stat-value">${waveStr}</span></div>
+        ${swellStr ? `<div class="stat"><i data-lucide="activity" class="stat-icon"></i><span class="stat-value">${swellStr}</span></div>` : ''}
+        <div class="stat"><i data-lucide="wind" class="stat-icon"></i><span class="stat-value">${windStr}</span></div>
+        <a href="${camUrl}" target="_blank" class="cam-link"><i data-lucide="camera" class="cam-icon"></i> Cam</a>
       </div>
       ${timelineHtml}`;
 
@@ -260,6 +261,8 @@
 
       document.getElementById('last-updated').textContent =
         `Updated ${formatPacificTime(new Date())}`;
+
+      if (window.lucide) lucide.createIcons();
 
     } catch (e) {
       console.error('Failed to load data:', e);
