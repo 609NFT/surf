@@ -479,6 +479,17 @@ main {
   color: var(--text-primary);
   line-height: 1.4;
   margin-bottom: 0.4rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.forecast-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+  margin-top: 1px;
 }
 
 .forecast-observation {
