@@ -86,6 +86,10 @@
     return `https://camstills.cdn-surfline.com/us-west-2/${alias}/latest_full.jpg`;
   }
 
+  function getCamPixelatedUrl(alias) {
+    return `https://camstills.cdn-surfline.com/${alias}/latest_small_pixelated.png`;
+  }
+
   // Surfline API is CORS-blocked from our domain - conditions disabled for now
 
   function degToCompass(deg) {
@@ -318,7 +322,8 @@
         const still = getCamStillUrl(cam.alias);
         return `<div class="cam-slide ${idx === 0 ? 'active' : ''}" data-index="${idx}" data-stream="${cam.stream}">
           <img src="${still}" alt="${cam.title}" class="cam-still" loading="lazy" referrerpolicy="no-referrer"
-               onerror="this.closest('.cam-slide').remove(); var c=this.closest('.cam-carousel'); if(c&&!c.querySelector('.cam-slide'))c.parentElement.style.display='none';">
+               data-fallback="${getCamPixelatedUrl(cam.alias)}"
+               onerror="if(!this.dataset.tried){this.dataset.tried='1';this.src=this.dataset.fallback}else{this.closest('.cam-slide').remove();var c=this.closest('.cam-carousel');if(c&&!c.querySelector('.cam-slide'))c.parentElement.style.display='none'}">
           <div class="cam-title">${cam.title}</div>
           ${cam.stream ? '<div class="cam-play"><i data-lucide="play" class="play-icon"></i></div>' : ''}
         </div>`;
