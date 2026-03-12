@@ -586,9 +586,16 @@ main {
   pointer-events: none;
 }
 
-.tide-hover-dot {
-  fill: var(--accent);
+.tide-hover-dot-html {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  background: var(--accent);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
   pointer-events: none;
+  z-index: 5;
+  box-shadow: 0 0 4px rgba(10,132,255,0.5);
 }
 
 .tide-hover-zone {

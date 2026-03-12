@@ -561,9 +561,9 @@
         <path d="${pathD}" class="tide-line"/>
 
         <line class="tide-hover-line" x1="0" y1="0" x2="0" y2="${h}" style="display:none"/>
-        <circle class="tide-hover-dot" r="3" cx="0" cy="0" style="display:none"/>
         <rect class="tide-hover-zone" x="0" y="0" width="${w}" height="${h}" fill="transparent"/>
       </svg>
+      <div class="tide-hover-dot-html" style="display:none"></div>
       <div class="tide-tooltip" style="display:none"></div>`;
 
       // Current tide height
@@ -621,10 +621,12 @@
     const y = pad + (1 - (height - minH) / range) * (h - pad * 2);
 
     const line = svg.querySelector('.tide-hover-line');
-    const dot = svg.querySelector('.tide-hover-dot');
+    const dot = wrap.querySelector('.tide-hover-dot-html');
     line.setAttribute('x1', x); line.setAttribute('x2', x);
     line.style.display = '';
-    dot.setAttribute('cx', x); dot.setAttribute('cy', y);
+    const yPct = (y / h) * 100;
+    dot.style.left = (pct * 100) + '%';
+    dot.style.top = yPct + '%';
     dot.style.display = '';
 
     const timeStr = new Date(timestamp * 1000).toLocaleString('en-US', {
@@ -642,7 +644,7 @@
       const svg = e.target.closest('.tide-svg');
       const wrap = svg.closest('.tide-chart-wrap');
       svg.querySelector('.tide-hover-line').style.display = 'none';
-      svg.querySelector('.tide-hover-dot').style.display = 'none';
+      wrap.querySelector('.tide-hover-dot-html').style.display = 'none';
       wrap.querySelector('.tide-tooltip').style.display = 'none';
     }
   }, true);
@@ -653,7 +655,7 @@
       const svg = zone.closest('.tide-svg');
       const wrap = svg.closest('.tide-chart-wrap');
       svg.querySelector('.tide-hover-line').style.display = 'none';
-      svg.querySelector('.tide-hover-dot').style.display = 'none';
+      wrap.querySelector('.tide-hover-dot-html').style.display = 'none';
       wrap.querySelector('.tide-tooltip').style.display = 'none';
     }
   });
