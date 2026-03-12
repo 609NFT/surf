@@ -194,7 +194,7 @@ main {
   left: 0.75rem;
   font-size: 1.4rem;
   font-weight: 700;
-  color: rgba(255,255,255,0.06);
+  color: rgba(10,132,255,0.2);
   line-height: 1;
   pointer-events: none;
   font-variant-numeric: tabular-nums;
@@ -286,14 +286,16 @@ main {
 .stat-icon {
   width: 13px;
   height: 13px;
-  opacity: 0.35;
   flex-shrink: 0;
+  stroke: var(--accent);
+  opacity: 0.8;
 }
 
 .buoy-icon {
   width: 13px;
   height: 13px;
-  opacity: 0.5;
+  stroke: var(--accent);
+  opacity: 0.8;
 }
 
 .cam-icon {
