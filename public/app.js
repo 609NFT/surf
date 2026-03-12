@@ -70,19 +70,7 @@
     return `https://camstills.cdn-surfline.com/us-west-2/${alias}/latest_full.jpg`;
   }
 
-  // Fetch Surfline conditions (separate from cams now)
-  async function fetchSurflineConditions(spotId) {
-    const token = await getSLToken();
-    if (!token) return null;
-    try {
-      const r = await fetch(`https://services.surfline.com/kbyg/spots/forecasts/conditions?spotId=${spotId}&days=1&accesstoken=${token}`);
-      if (!r.ok) return null;
-      const d = await r.json();
-      const conds = d.data?.conditions;
-      if (conds && conds.length > 0) return { headline: conds[0].headline || '' };
-      return null;
-    } catch (e) { return null; }
-  }
+  // Surfline API is CORS-blocked from our domain - conditions disabled for now
 
   function degToCompass(deg) {
     if (deg == null || isNaN(deg)) return '—';
@@ -313,7 +301,7 @@
       const slides = cams.map((cam, idx) => {
         const still = getCamStillUrl(cam.alias);
         return `<div class="cam-slide ${idx === 0 ? 'active' : ''}" data-index="${idx}" data-stream="${cam.stream}">
-          <img src="${still}" alt="${cam.title}" class="cam-still" loading="lazy" crossorigin="anonymous"
+          <img src="${still}" alt="${cam.title}" class="cam-still" loading="lazy" referrerpolicy="no-referrer"
                onerror="this.closest('.cam-slide').remove(); var c=this.closest('.cam-carousel'); if(c&&!c.querySelector('.cam-slide'))c.parentElement.style.display='none';">
           <div class="cam-title">${cam.title}</div>
           ${cam.stream ? '<div class="cam-play"><i data-lucide="play" class="play-icon"></i></div>' : ''}
@@ -330,15 +318,7 @@
     });
     if (window.lucide) lucide.createIcons();
 
-    // 2. Try to load conditions via API (may fail due to CORS, that's OK)
-    const condAreas = document.querySelectorAll('.sl-conditions[data-spot-id]');
-    for (const condEl of condAreas) {
-      const spotId = condEl.dataset.spotId;
-      const conds = await fetchSurflineConditions(spotId);
-      if (conds && conds.headline) {
-        condEl.innerHTML = `<div class="sl-headline">${conds.headline}</div>`;
-      }
-    }
+    // Surfline conditions API is CORS-blocked from our domain
   }
 
   // --- Cam carousel navigation ---
