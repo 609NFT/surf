@@ -376,6 +376,25 @@ main {
   font-variant-numeric: tabular-nums;
 }
 
+.tl-now {
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: calc(100% + 4px);
+  background: var(--accent);
+  border-radius: 1px;
+  z-index: 2;
+  box-shadow: 0 0 4px rgba(10,132,255,0.5);
+}
+
+.tl-now-label {
+  color: var(--accent);
+  opacity: 1;
+  font-weight: 600;
+}
+
 .timeline-segment {
   position: relative;
 }

@@ -225,18 +225,29 @@
     const timeline = getNextHours(spot.forecast.hourly, 48);
     let timelineHtml = '';
     if (timeline.length > 0) {
+      // Find which segment is closest to now
+      const nowTs = Date.now() / 1000;
+      let nowIdx = 0;
+      let minDiff = Infinity;
+      timeline.forEach((h, i) => {
+        const diff = Math.abs(h.timestamp - nowTs);
+        if (diff < minDiff) { minDiff = diff; nowIdx = i; }
+      });
+
       const segments = timeline.map((h, i) => {
         const val = h.rating || 0;
         const color = RATING_COLORS[val] || RATING_COLORS[0];
         const time = formatHour(h.time);
         const label = RATING_LABELS[val];
         const ht = h.waveHeight != null ? h.waveHeight.toFixed(1) + 'ft' : '';
+        const isNow = (i === nowIdx);
         // Show time label every 6 hours (Pacific time)
         const d = new Date(h.time);
         const hr = parseInt(d.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hour12: false }));
         const showLabel = (hr % 6 === 0);
         const timeLabel = showLabel ? `<span class="tl-time">${time}</span>` : '';
-        return `<div class="timeline-seg-wrap"><div class="timeline-segment" style="background:${color}" data-tip="${time}: ${label} ${ht}"></div>${timeLabel}</div>`;
+        const nowMarker = isNow ? '<span class="tl-now"></span>' : '';
+        return `<div class="timeline-seg-wrap${isNow ? ' now' : ''}"><div class="timeline-segment" style="background:${color}" data-tip="${time}: ${label} ${ht}">${nowMarker}</div>${isNow && !showLabel ? '<span class="tl-time tl-now-label">Now</span>' : timeLabel}</div>`;
       }).join('');
       timelineHtml = `
         <div class="timeline-label">Next 48h forecast</div>
