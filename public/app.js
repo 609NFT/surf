@@ -17,45 +17,27 @@
     } catch (e) { return null; }
   }
 
-  // Fetch Surfline conditions (human forecaster notes) for a spot
-  async function fetchSurflineConditions(spotId) {
+  // Fetch Surfline spot report (conditions + cameras)
+  async function fetchSurflineReport(spotId) {
     const token = await getSLToken();
     if (!token) return null;
     try {
-      const r = await fetch(`https://services.surfline.com/kbyg/spots/forecasts/conditions?spotId=${spotId}&days=1&accesstoken=${token}`);
+      const r = await fetch(`https://services.surfline.com/kbyg/spots/reports?spotId=${spotId}&accesstoken=${token}`);
       if (!r.ok) return null;
       const d = await r.json();
-      const conds = d.data?.conditions;
-      if (conds && conds.length > 0) {
-        return {
-          headline: conds[0].headline || '',
-          observation: conds[0].observation || '',
-          forecaster: conds[0].forecaster?.name || ''
-        };
-      }
-      return null;
-    } catch (e) { return null; }
-  }
 
-  // Fetch Surfline surf forecast (wave heights + ratings)
-  async function fetchSurflineRating(spotId) {
-    const token = await getSLToken();
-    if (!token) return null;
-    try {
-      const r = await fetch(`https://services.surfline.com/kbyg/spots/forecasts/rating?spotId=${spotId}&days=1&intervalHours=1&accesstoken=${token}`);
-      if (!r.ok) return null;
-      const d = await r.json();
-      const ratings = d.data?.rating || [];
-      if (ratings.length > 0) {
-        const now = Date.now() / 1000;
-        let closest = ratings[0];
-        for (const r of ratings) {
-          if (Math.abs(r.timestamp - now) < Math.abs(closest.timestamp - now)) closest = r;
-        }
-        return closest.rating;
+      // Extract conditions
+      const conds = d.forecast?.conditions?.conditions;
+      let headline = '';
+      if (conds && conds.length > 0) {
+        headline = conds[0].headline || '';
       }
-      return null;
-    } catch (e) { return null; }
+
+      // Extract cameras
+      const cameras = (d.cameras || []).filter(c => !c.status?.isDown && !c.nighttime);
+
+      return { headline, cameras };
+    } catch (e) { console.warn('SL report failed for', spotId, e); return null; }
   }
 
   function degToCompass(deg) {
@@ -211,6 +193,7 @@
 
     card.innerHTML = `
       <div class="rank-number"></div>
+      <div class="cam-area" data-spot-id="${spot.id}"></div>
       <div class="card-header">
         <div class="spot-name"><a href="${surflineUrl}" target="_blank">${spot.name}</a></div>
         <span class="rating-badge rating-${ratingClass}">${ratingLabel}</span>
@@ -275,17 +258,89 @@
     document.getElementById('current-time').textContent = formatPacificTime(new Date());
   }
 
-  // --- Load Surfline conditions into cards ---
+  // --- Load Surfline data (cams + conditions) into cards ---
   async function loadSurflineData() {
-    const containers = document.querySelectorAll('.sl-conditions[data-spot-id]');
-    for (const el of containers) {
-      const spotId = el.dataset.spotId;
-      const conds = await fetchSurflineConditions(spotId);
-      if (conds && conds.headline) {
-        el.innerHTML = `<div class="sl-headline">${conds.headline}</div>`;
+    const camAreas = document.querySelectorAll('.cam-area[data-spot-id]');
+    const condAreas = document.querySelectorAll('.sl-conditions[data-spot-id]');
+
+    // Build a map of condition elements by spotId
+    const condMap = {};
+    condAreas.forEach(el => { condMap[el.dataset.spotId] = el; });
+
+    for (const camEl of camAreas) {
+      const spotId = camEl.dataset.spotId;
+      const report = await fetchSurflineReport(spotId);
+      if (!report) continue;
+
+      // Populate headline
+      const condEl = condMap[spotId];
+      if (condEl && report.headline) {
+        condEl.innerHTML = `<div class="sl-headline">${report.headline}</div>`;
+      }
+
+      // Populate cam still
+      if (report.cameras.length > 0) {
+        const cam = report.cameras[0];
+        const still = cam.stillUrlFull || cam.stillUrl;
+        const stream = cam.streamUrl;
+        if (still) {
+          const camCount = report.cameras.length;
+          const camLabel = camCount > 1 ? `${camCount} cams` : '1 cam';
+          camEl.innerHTML = `
+            <div class="cam-wrapper" data-stream="${stream || ''}" data-spot-id="${spotId}">
+              <img src="${still}" alt="${cam.title}" class="cam-still" loading="lazy" onerror="this.parentElement.parentElement.style.display='none'">
+              <div class="cam-badge">${camLabel}</div>
+              ${stream ? '<div class="cam-play"><i data-lucide="play" class="play-icon"></i></div>' : ''}
+            </div>`;
+          if (window.lucide) lucide.createIcons();
+        }
       }
     }
   }
+
+  // --- Live stream player ---
+  document.addEventListener('click', function(e) {
+    const wrapper = e.target.closest('.cam-wrapper[data-stream]');
+    if (!wrapper) return;
+    const streamUrl = wrapper.dataset.stream;
+    if (!streamUrl) return;
+
+    // If already playing, toggle back to still
+    const existingVideo = wrapper.querySelector('video');
+    if (existingVideo) {
+      if (existingVideo._hls) existingVideo._hls.destroy();
+      existingVideo.remove();
+      wrapper.querySelector('.cam-still').style.display = '';
+      wrapper.querySelector('.cam-play').innerHTML = '<i data-lucide="play" class="play-icon"></i>';
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
+
+    const img = wrapper.querySelector('.cam-still');
+    const video = document.createElement('video');
+    video.className = 'cam-video';
+    video.autoplay = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.controls = true;
+
+    if (Hls.isSupported()) {
+      const hls = new Hls({ maxBufferLength: 10, maxMaxBufferLength: 20 });
+      hls.loadSource(streamUrl);
+      hls.attachMedia(video);
+      video._hls = hls;
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = streamUrl;
+    }
+
+    img.style.display = 'none';
+    wrapper.insertBefore(video, img);
+    const playBtn = wrapper.querySelector('.cam-play');
+    if (playBtn) {
+      playBtn.innerHTML = '<i data-lucide="square" class="play-icon"></i>';
+      if (window.lucide) lucide.createIcons();
+    }
+  });
 
   // --- Init ---
   updateClock();
