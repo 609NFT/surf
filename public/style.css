@@ -155,11 +155,11 @@ main {
 
 .rank-number {
   position: absolute;
-  top: 0.6rem;
+  bottom: 0.6rem;
   right: 0.7rem;
-  font-size: 1.8rem;
+  font-size: 2.2rem;
   font-weight: 700;
-  color: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.07);
   line-height: 1;
   pointer-events: none;
 }
