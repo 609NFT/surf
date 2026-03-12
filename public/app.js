@@ -17,28 +17,71 @@
     } catch (e) { return null; }
   }
 
-  // Fetch Surfline spot report (conditions + cameras)
-  async function fetchSurflineReport(spotId) {
+  // Known Surfline camera mappings for our spots
+  // Still images on camstills CDN can be loaded as <img> (no CORS)
+  // Stream URLs need hls.js
+  const SPOT_CAMS = {
+    '5842041f4e65fad6a7708832': [ // Oceanside Harbor
+      { alias: 'wc-oceansideharbor', title: 'Harbor', stream: 'https://hls.cdn-surfline.com/oregon/wc-oceansideharbor/playlist.m3u8' }
+    ],
+    '584204204e65fad6a7709435': [ // Oceanside Pier
+      { alias: 'wc-oceansidepiersouth', title: 'Pier South', stream: 'https://hls.cdn-surfline.com/oregon/wc-oceansidepiersouth/playlist.m3u8' },
+      { alias: 'wc-oceansidepiernorth', title: 'Pier North', stream: 'https://hls.cdn-surfline.com/oregon/wc-oceansidepiernorth/playlist.m3u8' }
+    ],
+    '5842041f4e65fad6a7708837': [ // Tamarack
+      { alias: 'wc-tamarack', title: 'Tamarack', stream: 'https://hls.cdn-surfline.com/oregon/wc-tamarack/playlist.m3u8' }
+    ],
+    '5842041f4e65fad6a77088a5': [ // Ponto
+      { alias: 'wc-pontonorth', title: 'Ponto North', stream: 'https://hls.cdn-surfline.com/oregon/wc-pontonorth/playlist.m3u8' },
+      { alias: 'wc-pontojetties', title: 'Ponto Jetties', stream: 'https://hls.cdn-surfline.com/oregon/wc-pontojetties/playlist.m3u8' },
+      { alias: 'wc-pontosouth', title: 'Ponto South', stream: 'https://hls.cdn-surfline.com/oregon/wc-pontosouth/playlist.m3u8' },
+      { alias: 'wc-pontosouthov', title: 'Ponto South Overview', stream: 'https://hls.cdn-surfline.com/oregon/wc-pontosouthov/playlist.m3u8' }
+    ],
+    '5842041f4e65fad6a770889f': [ // Grandview
+      { alias: 'wc-grandview', title: 'Grandview', stream: 'https://hls.cdn-surfline.com/oregon/wc-grandview/playlist.m3u8' }
+    ],
+    '5842041f4e65fad6a77088a0': [ // Beacons
+      { alias: 'wc-beacons', title: 'Beacons', stream: 'https://hls.cdn-surfline.com/oregon/wc-beacons/playlist.m3u8' }
+    ],
+    '5842041f4e65fad6a77088b7': [ // D Street
+      { alias: 'wc-dstreet', title: 'D Street', stream: 'https://hls.cdn-surfline.com/oregon/wc-dstreet/playlist.m3u8' }
+    ],
+    '5842041f4e65fad6a77088b4': [ // Swamis
+      { alias: 'wc-swamis', title: 'Swamis', stream: 'https://hls.cdn-surfline.com/oregon/wc-swamis/playlist.m3u8' }
+    ],
+    '5c008f5313603c0001df5318': [ // Pipes
+      { alias: 'wc-pipes', title: 'Pipes', stream: 'https://hls.cdn-surfline.com/oregon/wc-pipes/playlist.m3u8' }
+    ],
+    '5842041f4e65fad6a77088b1': [ // Cardiff Reef
+      { alias: 'wc-cardiffreef', title: 'Cardiff Reef', stream: 'https://hls.cdn-surfline.com/oregon/wc-cardiffreef/playlist.m3u8' }
+    ],
+    '5842041f4e65fad6a77088b3': [ // Seaside Reef
+      { alias: 'wc-seasidereef', title: 'Seaside Reef', stream: 'https://hls.cdn-surfline.com/oregon/wc-seasidereef/playlist.m3u8' }
+    ],
+    '5842041f4e65fad6a77088b0': [ // Del Mar Rivermouth
+      { alias: 'wc-delmarrivermouth', title: 'Rivermouth', stream: 'https://hls.cdn-surfline.com/oregon/wc-delmarrivermouth/playlist.m3u8' }
+    ],
+    '5842041f4e65fad6a77088af': [ // 15th Street Del Mar
+      { alias: 'wc-15thstreet', title: '15th Street', stream: 'https://hls.cdn-surfline.com/oregon/wc-15thstreet/playlist.m3u8' }
+    ]
+  };
+
+  function getCamStillUrl(alias) {
+    return `https://camstills.cdn-surfline.com/us-west-2/${alias}/latest_full.jpg`;
+  }
+
+  // Fetch Surfline conditions (separate from cams now)
+  async function fetchSurflineConditions(spotId) {
     const token = await getSLToken();
-    if (!token) { console.warn('No SL token'); return null; }
+    if (!token) return null;
     try {
-      const r = await fetch(`https://services.surfline.com/kbyg/spots/reports?spotId=${spotId}&accesstoken=${token}`);
-      if (!r.ok) { console.warn('SL report', spotId, r.status); return null; }
+      const r = await fetch(`https://services.surfline.com/kbyg/spots/forecasts/conditions?spotId=${spotId}&days=1&accesstoken=${token}`);
+      if (!r.ok) return null;
       const d = await r.json();
-      console.log('SL report for', spotId, '- cameras:', (d.cameras||[]).length, '- keys:', Object.keys(d));
-
-      // Extract conditions
-      const conds = d.forecast?.conditions?.conditions;
-      let headline = '';
-      if (conds && conds.length > 0) {
-        headline = conds[0].headline || '';
-      }
-
-      // Extract cameras
-      const cameras = (d.cameras || []).filter(c => !c.status?.isDown && !c.nighttime);
-
-      return { headline, cameras };
-    } catch (e) { console.warn('SL report failed for', spotId, e); return null; }
+      const conds = d.data?.conditions;
+      if (conds && conds.length > 0) return { headline: conds[0].headline || '' };
+      return null;
+    } catch (e) { return null; }
   }
 
   function degToCompass(deg) {
@@ -258,56 +301,44 @@
     document.getElementById('current-time').textContent = formatPacificTime(new Date());
   }
 
-  // --- Load Surfline data (cams + conditions) into cards ---
+  // --- Load Surfline data (cams from hardcoded map, conditions via API) ---
   async function loadSurflineData() {
+    // 1. Build cam carousels immediately from hardcoded map (no API needed)
     const camAreas = document.querySelectorAll('.cam-area[data-spot-id]');
+    camAreas.forEach(camEl => {
+      const spotId = camEl.dataset.spotId;
+      const cams = SPOT_CAMS[spotId];
+      if (!cams || cams.length === 0) return;
+
+      const slides = cams.map((cam, idx) => {
+        const still = getCamStillUrl(cam.alias);
+        return `<div class="cam-slide ${idx === 0 ? 'active' : ''}" data-index="${idx}" data-stream="${cam.stream}">
+          <img src="${still}" alt="${cam.title}" class="cam-still" loading="lazy" crossorigin="anonymous"
+               onerror="this.closest('.cam-slide').remove(); var c=this.closest('.cam-carousel'); if(c&&!c.querySelector('.cam-slide'))c.parentElement.style.display='none';">
+          <div class="cam-title">${cam.title}</div>
+          ${cam.stream ? '<div class="cam-play"><i data-lucide="play" class="play-icon"></i></div>' : ''}
+        </div>`;
+      }).join('');
+
+      const arrows = cams.length > 1 ? `
+        <button class="cam-arrow cam-arrow-left" data-dir="-1"><i data-lucide="chevron-left"></i></button>
+        <button class="cam-arrow cam-arrow-right" data-dir="1"><i data-lucide="chevron-right"></i></button>
+        <div class="cam-dots">${cams.map((_, idx) => `<span class="cam-dot ${idx === 0 ? 'active' : ''}" data-index="${idx}"></span>`).join('')}</div>
+      ` : '';
+
+      camEl.innerHTML = `<div class="cam-carousel">${slides}${arrows}</div>`;
+    });
+    if (window.lucide) lucide.createIcons();
+
+    // 2. Try to load conditions via API (may fail due to CORS, that's OK)
     const condAreas = document.querySelectorAll('.sl-conditions[data-spot-id]');
-
-    const condMap = {};
-    condAreas.forEach(el => { condMap[el.dataset.spotId] = el; });
-
-    // Fetch all reports in parallel (batches of 4 to be nice)
-    const spots = Array.from(camAreas).map(el => el.dataset.spotId);
-    const batchSize = 4;
-    for (let i = 0; i < spots.length; i += batchSize) {
-      const batch = spots.slice(i, i + batchSize);
-      const results = await Promise.all(batch.map(id => fetchSurflineReport(id).then(r => [id, r])));
-
-      for (const [spotId, report] of results) {
-        if (!report) continue;
-
-        // Populate headline
-        const condEl = condMap[spotId];
-        if (condEl && report.headline) {
-          condEl.innerHTML = `<div class="sl-headline">${report.headline}</div>`;
-        }
-
-        // Populate cam carousel
-        const camEl = document.querySelector(`.cam-area[data-spot-id="${spotId}"]`);
-        const cams = report.cameras;
-        if (!camEl || cams.length === 0) continue;
-
-        const slides = cams.map((cam, idx) => {
-          const still = cam.stillUrlFull || cam.stillUrl;
-          const stream = cam.streamUrl || '';
-          const title = cam.title || '';
-          return `<div class="cam-slide ${idx === 0 ? 'active' : ''}" data-index="${idx}" data-stream="${stream}">
-            <img src="${still}" alt="${title}" class="cam-still" loading="lazy" onerror="this.closest('.cam-slide').style.display='none'">
-            <div class="cam-title">${title.replace(/^SD - /, '')}</div>
-            ${stream ? '<div class="cam-play"><i data-lucide="play" class="play-icon"></i></div>' : ''}
-          </div>`;
-        }).join('');
-
-        const arrows = cams.length > 1 ? `
-          <button class="cam-arrow cam-arrow-left" data-dir="-1"><i data-lucide="chevron-left"></i></button>
-          <button class="cam-arrow cam-arrow-right" data-dir="1"><i data-lucide="chevron-right"></i></button>
-          <div class="cam-dots">${cams.map((_, idx) => `<span class="cam-dot ${idx === 0 ? 'active' : ''}" data-index="${idx}"></span>`).join('')}</div>
-        ` : '';
-
-        camEl.innerHTML = `<div class="cam-carousel" data-count="${cams.length}">${slides}${arrows}</div>`;
+    for (const condEl of condAreas) {
+      const spotId = condEl.dataset.spotId;
+      const conds = await fetchSurflineConditions(spotId);
+      if (conds && conds.headline) {
+        condEl.innerHTML = `<div class="sl-headline">${conds.headline}</div>`;
       }
     }
-    if (window.lucide) lucide.createIcons();
   }
 
   // --- Cam carousel navigation ---
@@ -323,7 +354,6 @@
       const dir = parseInt(arrow.dataset.dir);
       const nextIdx = (currentIdx + dir + slides.length) % slides.length;
 
-      // Stop any playing video
       const video = current.querySelector('video');
       if (video) { if (video._hls) video._hls.destroy(); video.remove(); current.querySelector('.cam-still').style.display = ''; }
 
