@@ -231,9 +231,9 @@
         const time = formatHour(h.time);
         const label = RATING_LABELS[val];
         const ht = h.waveHeight != null ? h.waveHeight.toFixed(1) + 'ft' : '';
-        // Show time label every 6 hours
+        // Show time label every 6 hours (Pacific time)
         const d = new Date(h.time);
-        const hr = d.getHours();
+        const hr = parseInt(d.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hour12: false }));
         const showLabel = (hr % 6 === 0);
         const timeLabel = showLabel ? `<span class="tl-time">${time}</span>` : '';
         return `<div class="timeline-seg-wrap"><div class="timeline-segment" style="background:${color}" data-tip="${time}: ${label} ${ht}"></div>${timeLabel}</div>`;
