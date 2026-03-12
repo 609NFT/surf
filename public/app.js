@@ -554,11 +554,16 @@
 
       const labels = '';
 
+      // Now marker position
+      const nowPct = Math.max(0, Math.min(100, ((now - hourly[0].timestamp) / (hourly[hourly.length - 1].timestamp - hourly[0].timestamp)) * 100));
+      const nowX = (nowPct / 100) * w;
+
       // Hover elements: invisible rect + cursor line + dot + tooltip
       const svg = `<svg viewBox="0 0 ${w} ${h}" class="tide-svg" preserveAspectRatio="none"
                         data-w="${w}" data-h="${h}" data-pad="${pad}" data-min="${minH}" data-range="${range}" data-count="${hourly.length}">
         <path d="${fillD}" class="tide-fill"/>
         <path d="${pathD}" class="tide-line"/>
+        <line x1="${nowX}" y1="0" x2="${nowX}" y2="${h}" class="tide-now-line"/>
 
         <line class="tide-hover-line" x1="0" y1="0" x2="0" y2="${h}" style="display:none"/>
         <rect class="tide-hover-zone" x="0" y="0" width="${w}" height="${h}" fill="transparent"/>
