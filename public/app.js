@@ -2,6 +2,29 @@
   const RATING_LABELS = ['FLAT', 'VERY POOR', 'POOR', 'POOR TO FAIR', 'FAIR', 'FAIR TO GOOD', 'GOOD'];
   const RATING_CLASSES = ['flat', 'very-poor', 'poor', 'poor-to-fair', 'fair', 'fair-to-good', 'good'];
   const RATING_COLORS = ['#1c1c1e', '#ff453a', '#ff9f0a', '#ffd60a', '#ffd60a', '#30d158', '#30d158'];
+
+  // Map Surfline ratingKey to our color/class system
+  const SL_RATING_MAP = {
+    'FLAT':          { color: '#1c1c1e', cls: 'flat', idx: 0 },
+    'VERY_POOR':     { color: '#ff453a', cls: 'very-poor', idx: 1 },
+    'POOR':          { color: '#ff9f0a', cls: 'poor', idx: 2 },
+    'POOR_TO_FAIR':  { color: '#ffd60a', cls: 'poor-to-fair', idx: 3 },
+    'FAIR':          { color: '#ffd60a', cls: 'fair', idx: 4 },
+    'FAIR_TO_GOOD':  { color: '#30d158', cls: 'fair-to-good', idx: 5 },
+    'GOOD':          { color: '#30d158', cls: 'good', idx: 6 },
+    'GOOD_TO_EPIC':  { color: '#30d158', cls: 'good', idx: 6 },
+    'EPIC':          { color: '#0a84ff', cls: 'good', idx: 6 }
+  };
+
+  function getRatingInfo(h) {
+    if (h && h.ratingKey && SL_RATING_MAP[h.ratingKey]) {
+      const m = SL_RATING_MAP[h.ratingKey];
+      return { color: m.color, cls: m.cls, idx: m.idx, label: h.ratingKey.replace(/_/g, ' ') };
+    }
+    const val = (h && h.rating) || 0;
+    const clamped = Math.max(0, Math.min(6, Math.round(val)));
+    return { color: RATING_COLORS[clamped], cls: RATING_CLASSES[clamped], idx: clamped, label: RATING_LABELS[clamped] };
+  }
   const DOT_CLASSES = ['', 'very-poor', 'poor', 'poor', 'fair', 'good', 'good'];
 
   const REFRESH_INTERVAL = 15 * 60 * 1000;
@@ -189,12 +212,10 @@
     }
 
     const current = getCurrentHour(spot.forecast.hourly);
-    const ratingVal = current ? current.rating : 0;
-    // Use Surfline's rating label if available, otherwise our scale
-    const ratingLabel = (current && current.ratingKey)
-      ? current.ratingKey.replace(/_/g, ' ')
-      : (RATING_LABELS[ratingVal] || 'FLAT');
-    const ratingClass = RATING_CLASSES[Math.min(ratingVal, 6)] || 'flat';
+    const ri = getRatingInfo(current);
+    const ratingVal = ri.idx;
+    const ratingLabel = ri.label;
+    const ratingClass = ri.cls;
     const dotClass = DOT_CLASSES[Math.min(ratingVal, 6)] || '';
 
     const slug = slugify(spot.name);
@@ -247,10 +268,10 @@
     let timelineHtml = '';
     if (timeline.length > 0) {
       const segments = timeline.map((h, i) => {
-        const val = h.rating || 0;
-        const color = RATING_COLORS[val] || RATING_COLORS[0];
+        const rInfo = getRatingInfo(h);
+        const color = rInfo.color;
         const time = formatHour(h.time);
-        const label = h.ratingKey ? h.ratingKey.replace(/_/g, ' ') : RATING_LABELS[val];
+        const label = rInfo.label;
         let ht = '';
         if (h.waveMin != null && h.waveMax != null && h.source === 'surfline') {
           ht = `${Math.round(h.waveMin)}-${Math.round(h.waveMax)}ft`;
