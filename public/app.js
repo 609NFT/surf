@@ -303,9 +303,6 @@
         grid.appendChild(card);
       });
 
-      document.getElementById('last-updated').textContent =
-        `Updated ${formatPacificTime(new Date())}`;
-
       if (window.lucide) lucide.createIcons();
 
     } catch (e) {
@@ -316,10 +313,6 @@
     }
   }
 
-  // --- Clock ---
-  function updateClock() {
-    document.getElementById('current-time').textContent = formatPacificTime(new Date());
-  }
 
   // --- Load Surfline data (cams from hardcoded map, conditions via API) ---
   async function loadSurflineData() {
@@ -625,8 +618,6 @@
   });
 
   // --- Init ---
-  updateClock();
-  setInterval(updateClock, 60000);
   loadData().then(() => { loadSurflineData(); loadTides(); });
   setInterval(loadData, REFRESH_INTERVAL);
 })();
