@@ -1,9 +1,9 @@
-const express = require('express');
+const http = require('http');
+const fs = require('fs');
 const path = require('path');
 const https = require('https');
-const http = require('http');
+const url = require('url');
 
-const app = express();
 const PORT = process.env.PORT || 4001;
 
 // --- Spot data ---
@@ -27,203 +27,162 @@ const SPOTS = [
 // --- Cache ---
 const cache = new Map();
 const CACHE_TTL = 15 * 60 * 1000;
-
-function getCached(key) {
-  const entry = cache.get(key);
-  if (entry && Date.now() - entry.ts < CACHE_TTL) return entry.data;
-  return null;
-}
-function setCache(key, data) {
-  cache.set(key, { data, ts: Date.now() });
-}
+function getCached(key) { const e = cache.get(key); if (e && Date.now() - e.ts < CACHE_TTL) return e.data; return null; }
+function setCache(key, data) { cache.set(key, { data, ts: Date.now() }); }
 
 // --- HTTP fetch ---
-function fetchUrl(url) {
+function fetchUrl(u) {
   return new Promise((resolve, reject) => {
-    const mod = url.startsWith('https') ? https : http;
-    const req = mod.get(url, { headers: { 'User-Agent': 'EncinitasSurf/1.0' } }, (res) => {
-      if (res.statusCode < 200 || res.statusCode >= 300) {
-        res.resume();
-        return reject(new Error(`HTTP ${res.statusCode}`));
-      }
-      let body = '';
-      res.on('data', chunk => body += chunk);
-      res.on('end', () => resolve(body));
+    const mod = u.startsWith('https') ? https : http;
+    const req = mod.get(u, { headers: { 'User-Agent': 'EncinitasSurf/1.0' } }, (res) => {
+      if (res.statusCode < 200 || res.statusCode >= 300) { res.resume(); return reject(new Error(`HTTP ${res.statusCode}`)); }
+      let body = ''; res.on('data', c => body += c); res.on('end', () => resolve(body));
     });
     req.on('error', reject);
     req.setTimeout(15000, () => { req.destroy(); reject(new Error('timeout')); });
   });
 }
+async function fetchJSON(u) { return JSON.parse(await fetchUrl(u)); }
 
-async function fetchJSON(url) {
-  const body = await fetchUrl(url);
-  return JSON.parse(body);
-}
-
-// --- Surf Rating Algorithm ---
+// --- Surf Rating ---
 function calculateRating(waveHeightFt, periodSec, windSpeedKts, windDir) {
   if (waveHeightFt == null || waveHeightFt < 0.5) return 0;
-
-  let heightScore = 0;
-  if (waveHeightFt >= 1 && waveHeightFt < 2) heightScore = 0.5;
-  else if (waveHeightFt >= 2 && waveHeightFt < 3) heightScore = 1;
-  else if (waveHeightFt >= 3 && waveHeightFt < 4) heightScore = 1.5;
-  else if (waveHeightFt >= 4 && waveHeightFt < 6) heightScore = 2;
-  else if (waveHeightFt >= 6 && waveHeightFt < 8) heightScore = 2.5;
-  else if (waveHeightFt >= 8) heightScore = 3;
-
-  let periodScore = 0;
+  let hs = 0;
+  if (waveHeightFt >= 1 && waveHeightFt < 2) hs = 0.5;
+  else if (waveHeightFt >= 2 && waveHeightFt < 3) hs = 1;
+  else if (waveHeightFt >= 3 && waveHeightFt < 4) hs = 1.5;
+  else if (waveHeightFt >= 4 && waveHeightFt < 6) hs = 2;
+  else if (waveHeightFt >= 6 && waveHeightFt < 8) hs = 2.5;
+  else if (waveHeightFt >= 8) hs = 3;
+  let ps = 0;
   if (periodSec != null) {
-    if (periodSec >= 8 && periodSec < 10) periodScore = 0.5;
-    else if (periodSec >= 10 && periodSec < 13) periodScore = 1;
-    else if (periodSec >= 13 && periodSec < 16) periodScore = 1.5;
-    else if (periodSec >= 16) periodScore = 2;
+    if (periodSec >= 8 && periodSec < 10) ps = 0.5;
+    else if (periodSec >= 10 && periodSec < 13) ps = 1;
+    else if (periodSec >= 13 && periodSec < 16) ps = 1.5;
+    else if (periodSec >= 16) ps = 2;
   }
-
-  let windPenalty = 0;
+  let wp = 0;
   if (windSpeedKts != null && windSpeedKts > 5) {
-    const isOnshore = windDir != null && (windDir >= 180 && windDir <= 320);
-    const isSideshore = windDir != null && ((windDir >= 140 && windDir < 180) || (windDir > 320 && windDir <= 360));
-
-    if (isOnshore) {
-      if (windSpeedKts > 15) windPenalty = -2;
-      else if (windSpeedKts > 10) windPenalty = -1.5;
-      else windPenalty = -0.5;
-    } else if (isSideshore) {
-      if (windSpeedKts > 15) windPenalty = -1;
-      else if (windSpeedKts > 10) windPenalty = -0.5;
-    }
-    const isOffshore = windDir != null && (windDir >= 20 && windDir < 140);
-    if (isOffshore && windSpeedKts < 15 && waveHeightFt >= 2) {
-      windPenalty = 0.5;
-    }
+    const onshore = windDir != null && windDir >= 180 && windDir <= 320;
+    const sideshore = windDir != null && ((windDir >= 140 && windDir < 180) || (windDir > 320 && windDir <= 360));
+    if (onshore) { wp = windSpeedKts > 15 ? -2 : windSpeedKts > 10 ? -1.5 : -0.5; }
+    else if (sideshore) { wp = windSpeedKts > 15 ? -1 : windSpeedKts > 10 ? -0.5 : 0; }
+    if (windDir != null && windDir >= 20 && windDir < 140 && windSpeedKts < 15 && waveHeightFt >= 2) wp = 0.5;
   }
-
-  const total = Math.max(0, Math.min(6, Math.round(heightScore + periodScore + windPenalty)));
-  return total === 0 && waveHeightFt >= 0.5 ? 1 : total;
+  const t = Math.max(0, Math.min(6, Math.round(hs + ps + wp)));
+  return t === 0 && waveHeightFt >= 0.5 ? 1 : t;
 }
 
-// --- Open-Meteo data fetching ---
+// --- Open-Meteo ---
 async function fetchAllForecasts() {
-  const cacheKey = 'forecasts:all';
-  const cached = getCached(cacheKey);
-  if (cached) return cached;
-
-  const uniqueCoords = [];
-  const coordMap = new Map();
-
-  for (const spot of SPOTS) {
-    const key = `${spot.lat.toFixed(2)},${spot.lon.toFixed(2)}`;
-    if (!coordMap.has(key)) {
-      coordMap.set(key, uniqueCoords.length);
-      uniqueCoords.push({ lat: spot.lat, lon: spot.lon, key });
-    }
-  }
-
-  const results = await Promise.all(uniqueCoords.map(async (coord) => {
+  const ck = 'forecasts:all'; const cd = getCached(ck); if (cd) return cd;
+  const uq = []; const cm = new Map();
+  for (const s of SPOTS) { const k = `${s.lat.toFixed(2)},${s.lon.toFixed(2)}`; if (!cm.has(k)) { cm.set(k, uq.length); uq.push({ lat: s.lat, lon: s.lon, key: k }); } }
+  const results = await Promise.all(uq.map(async (c) => {
     try {
-      const [marine, weather] = await Promise.all([
-        fetchJSON(`https://marine-api.open-meteo.com/v1/marine?latitude=${coord.lat}&longitude=${coord.lon}&hourly=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction&timezone=America/Los_Angeles&forecast_days=3`),
-        fetchJSON(`https://api.open-meteo.com/v1/forecast?latitude=${coord.lat}&longitude=${coord.lon}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m&timezone=America/Los_Angeles&forecast_days=3&wind_speed_unit=kn`)
+      const [m, w] = await Promise.all([
+        fetchJSON(`https://marine-api.open-meteo.com/v1/marine?latitude=${c.lat}&longitude=${c.lon}&hourly=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction&timezone=America/Los_Angeles&forecast_days=3`),
+        fetchJSON(`https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lon}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m&timezone=America/Los_Angeles&forecast_days=3&wind_speed_unit=kn`)
       ]);
-      return { key: coord.key, marine, weather, error: null };
-    } catch (e) {
-      console.error(`Fetch error for ${coord.key}:`, e.message);
-      return { key: coord.key, marine: null, weather: null, error: e.message };
-    }
+      return { key: c.key, marine: m, weather: w };
+    } catch (e) { return { key: c.key, marine: null, weather: null, error: e.message }; }
   }));
-
-  const dataMap = {};
-  for (const r of results) { dataMap[r.key] = r; }
-
-  const spotForecasts = SPOTS.map(spot => {
-    const key = `${spot.lat.toFixed(2)},${spot.lon.toFixed(2)}`;
-    const data = dataMap[key];
-    if (!data || !data.marine || !data.weather) {
-      return { ...spot, forecast: null, error: data?.error || 'No data' };
-    }
-    const marine = data.marine.hourly;
-    const weather = data.weather.hourly;
-    const times = marine.time;
-    const hourly = times.map((time, i) => {
-      const waveHeightM = marine.wave_height?.[i];
-      const wavePeriod = marine.wave_period?.[i];
-      const waveDir = marine.wave_direction?.[i];
-      const swellHeightM = marine.swell_wave_height?.[i];
-      const swellPeriod = marine.swell_wave_period?.[i];
-      const swellDir = marine.swell_wave_direction?.[i];
-      const windSpeed = weather.wind_speed_10m?.[i];
-      const windDir = weather.wind_direction_10m?.[i];
-      const windGusts = weather.wind_gusts_10m?.[i];
-      const primaryHeightM = swellHeightM || waveHeightM || 0;
-      const primaryPeriod = swellPeriod || wavePeriod || 0;
-      const waveHeightFt = primaryHeightM * 3.28084;
-      const totalWaveHeightFt = (waveHeightM || 0) * 3.28084;
-      const rating = calculateRating(waveHeightFt, primaryPeriod, windSpeed, windDir);
-      return { time, timestamp: new Date(time).getTime() / 1000, waveHeight: totalWaveHeightFt, swellHeight: waveHeightFt, wavePeriod: primaryPeriod, waveDir, swellDir, windSpeed, windDir, windGusts, rating };
+  const dm = {}; for (const r of results) dm[r.key] = r;
+  const sf = SPOTS.map(s => {
+    const k = `${s.lat.toFixed(2)},${s.lon.toFixed(2)}`; const d = dm[k];
+    if (!d || !d.marine || !d.weather) return { ...s, forecast: null };
+    const mr = d.marine.hourly, wr = d.weather.hourly, ts = mr.time;
+    const hourly = ts.map((t, i) => {
+      const wh = mr.wave_height?.[i], wp = mr.wave_period?.[i], wd = mr.wave_direction?.[i];
+      const sh = mr.swell_wave_height?.[i], sp = mr.swell_wave_period?.[i], sd = mr.swell_wave_direction?.[i];
+      const ws = wr.wind_speed_10m?.[i], wdr = wr.wind_direction_10m?.[i], wg = wr.wind_gusts_10m?.[i];
+      const ph = sh || wh || 0, pp = sp || wp || 0;
+      const whf = ph * 3.28084, twf = (wh || 0) * 3.28084;
+      return { time: t, timestamp: new Date(t).getTime() / 1000, waveHeight: twf, swellHeight: whf, wavePeriod: pp, waveDir: wd, swellDir: sd, windSpeed: ws, windDir: wdr, windGusts: wg, rating: calculateRating(whf, pp, ws, wdr) };
     });
-    return { ...spot, forecast: { hourly } };
+    return { ...s, forecast: { hourly } };
   });
-
-  setCache(cacheKey, spotForecasts);
-  return spotForecasts;
+  setCache(ck, sf); return sf;
 }
 
 // --- NDBC buoy ---
 async function fetchBuoyData() {
-  const cacheKey = 'buoy:46224';
-  const cached = getCached(cacheKey);
-  if (cached) return cached;
+  const ck = 'buoy:46224'; const cd = getCached(ck); if (cd) return cd;
   try {
-    const text = await fetchUrl('https://www.ndbc.noaa.gov/data/realtime2/46224.txt');
-    const lines = text.trim().split('\n');
-    if (lines.length < 3) return null;
-    const headers = lines[0].trim().split(/\s+/);
-    const values = lines[2].trim().split(/\s+/);
-    const row = {};
-    headers.forEach((h, i) => row[h] = values[i]);
+    const txt = await fetchUrl('https://www.ndbc.noaa.gov/data/realtime2/46224.txt');
+    const lines = txt.trim().split('\n'); if (lines.length < 3) return null;
+    const h = lines[0].trim().split(/\s+/), v = lines[2].trim().split(/\s+/), r = {};
+    h.forEach((k, i) => r[k] = v[i]);
     const data = {
-      time: `${row['#YY']}-${row['MM']}-${row['DD']} ${row['hh']}:${row['mm']} UTC`,
-      waveHeight: row['WVHT'] !== 'MM' ? (parseFloat(row['WVHT']) * 3.28084).toFixed(1) : null,
-      dominantPeriod: row['DPD'] !== 'MM' ? parseFloat(row['DPD']) : null,
-      avgPeriod: row['APD'] !== 'MM' ? parseFloat(row['APD']) : null,
-      waveDirection: row['MWD'] !== 'MM' ? parseInt(row['MWD']) : null,
-      windSpeed: row['WSPD'] !== 'MM' ? (parseFloat(row['WSPD']) * 1.944).toFixed(0) : null,
-      windDir: row['WDIR'] !== 'MM' ? parseInt(row['WDIR']) : null,
-      waterTemp: row['WTMP'] !== 'MM' ? ((parseFloat(row['WTMP']) * 9 / 5) + 32).toFixed(0) : null,
+      time: `${r['#YY']}-${r['MM']}-${r['DD']} ${r['hh']}:${r['mm']} UTC`,
+      waveHeight: r['WVHT'] !== 'MM' ? (parseFloat(r['WVHT']) * 3.28084).toFixed(1) : null,
+      dominantPeriod: r['DPD'] !== 'MM' ? parseFloat(r['DPD']) : null,
+      avgPeriod: r['APD'] !== 'MM' ? parseFloat(r['APD']) : null,
+      waveDirection: r['MWD'] !== 'MM' ? parseInt(r['MWD']) : null,
+      windSpeed: r['WSPD'] !== 'MM' ? (parseFloat(r['WSPD']) * 1.944).toFixed(0) : null,
+      windDir: r['WDIR'] !== 'MM' ? parseInt(r['WDIR']) : null,
+      waterTemp: r['WTMP'] !== 'MM' ? ((parseFloat(r['WTMP']) * 9 / 5) + 32).toFixed(0) : null,
     };
-    setCache(cacheKey, data);
-    return data;
-  } catch (e) {
-    console.error('Buoy fetch error:', e.message);
-    return null;
-  }
+    setCache(ck, data); return data;
+  } catch (e) { return null; }
 }
 
-// --- Routes ---
-app.use(express.static(path.join(__dirname, 'public')));
+// --- MIME types ---
+const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml' };
 
-app.get('/api/spots', (req, res) => { res.json(SPOTS); });
+// --- Server ---
+const server = http.createServer(async (req, res) => {
+  const parsed = url.parse(req.url);
+  const pathname = parsed.pathname;
 
-app.get('/api/forecasts', async (req, res) => {
+  // API routes
+  if (pathname === '/api/forecasts') {
+    try {
+      const spots = await fetchAllForecasts();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ spots, timestamp: new Date().toISOString() }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Internal error' }));
+    }
+    return;
+  }
+  if (pathname === '/api/buoy') {
+    try {
+      const data = await fetchBuoyData();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(data || { error: 'No data' }));
+    } catch (e) {
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed' }));
+    }
+    return;
+  }
+  if (pathname === '/api/spots') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(SPOTS));
+    return;
+  }
+
+  // Static files
+  let filePath = path.join(__dirname, 'public', pathname === '/' ? 'index.html' : pathname);
+  const ext = path.extname(filePath);
   try {
-    const spots = await fetchAllForecasts();
-    res.json({ spots, timestamp: new Date().toISOString() });
+    const content = fs.readFileSync(filePath);
+    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+    res.end(content);
   } catch (e) {
-    console.error('Forecasts error:', e.message);
-    res.status(500).json({ error: 'Internal error' });
+    // Try index.html for SPA
+    try {
+      const content = fs.readFileSync(path.join(__dirname, 'public', 'index.html'));
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(content);
+    } catch (e2) {
+      res.writeHead(404); res.end('Not found');
+    }
   }
 });
 
-app.get('/api/buoy', async (req, res) => {
-  try {
-    const data = await fetchBuoyData();
-    res.json(data || { error: 'No data available' });
-  } catch (e) {
-    res.status(502).json({ error: 'Failed to fetch buoy data' });
-  }
-});
-
-app.listen(PORT, () => {
-  console.log(`Encinitas Surf Forecast running on http://localhost:${PORT}`);
+server.listen(PORT, () => {
+  console.log(`Encinitas Surf Forecast running on port ${PORT}`);
 });
