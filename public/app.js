@@ -137,13 +137,18 @@
     const timeline = getNextHours(spot.forecast.hourly, 48);
     let timelineHtml = '';
     if (timeline.length > 0) {
-      const segments = timeline.map(h => {
+      const segments = timeline.map((h, i) => {
         const val = h.rating || 0;
         const color = RATING_COLORS[val] || RATING_COLORS[0];
         const time = formatHour(h.time);
         const label = RATING_LABELS[val];
         const ht = h.waveHeight != null ? h.waveHeight.toFixed(1) + 'ft' : '';
-        return `<div class="timeline-segment" style="background:${color}" data-tip="${time}: ${label} ${ht}"></div>`;
+        // Show time label every 6 hours
+        const d = new Date(h.time);
+        const hr = d.getHours();
+        const showLabel = (hr % 6 === 0);
+        const timeLabel = showLabel ? `<span class="tl-time">${time}</span>` : '';
+        return `<div class="timeline-seg-wrap"><div class="timeline-segment" style="background:${color}" data-tip="${time}: ${label} ${ht}"></div>${timeLabel}</div>`;
       }).join('');
       timelineHtml = `
         <div class="timeline-label">Next 48h forecast</div>
