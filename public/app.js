@@ -225,29 +225,18 @@
     const timeline = getNextHours(spot.forecast.hourly, 48);
     let timelineHtml = '';
     if (timeline.length > 0) {
-      // Find which segment is closest to now
-      const nowTs = Date.now() / 1000;
-      let nowIdx = 0;
-      let minDiff = Infinity;
-      timeline.forEach((h, i) => {
-        const diff = Math.abs(h.timestamp - nowTs);
-        if (diff < minDiff) { minDiff = diff; nowIdx = i; }
-      });
-
       const segments = timeline.map((h, i) => {
         const val = h.rating || 0;
         const color = RATING_COLORS[val] || RATING_COLORS[0];
         const time = formatHour(h.time);
         const label = RATING_LABELS[val];
         const ht = h.waveHeight != null ? h.waveHeight.toFixed(1) + 'ft' : '';
-        const isNow = (i === nowIdx);
         // Show time label every 6 hours (Pacific time)
         const d = new Date(h.time);
         const hr = parseInt(d.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hour12: false }));
         const showLabel = (hr % 6 === 0);
         const timeLabel = showLabel ? `<span class="tl-time">${time}</span>` : '';
-        const nowMarker = isNow ? '<span class="tl-now"></span>' : '';
-        return `<div class="timeline-seg-wrap${isNow ? ' now' : ''}"><div class="timeline-segment" style="background:${color}" data-tip="${time}: ${label} ${ht}">${nowMarker}</div>${isNow && !showLabel ? '<span class="tl-time tl-now-label">Now</span>' : timeLabel}</div>`;
+        return `<div class="timeline-seg-wrap"><div class="timeline-segment" style="background:${color}" data-tip="${time}: ${label} ${ht}"></div>${timeLabel}</div>`;
       }).join('');
       timelineHtml = `
         <div class="timeline-label">Next 48h forecast</div>
@@ -488,16 +477,7 @@
       const pathD = 'M' + pointsArr.map(p => `${p.x},${p.y}`).join(' L');
       const fillD = pathD + ` L${w},${h} L0,${h} Z`;
 
-      // Now marker position
-      let nowX = 0;
-      for (let i = 0; i < hourly.length; i++) {
-        if (hourly[i].timestamp >= now) {
-          const prev = i > 0 ? hourly[i-1] : hourly[i];
-          const frac = (now - prev.timestamp) / (hourly[i].timestamp - prev.timestamp || 1);
-          nowX = ((Math.max(0, i - 1) + frac) / (hourly.length - 1)) * w;
-          break;
-        }
-      }
+
 
       const labels = '';
 
@@ -506,7 +486,7 @@
                         data-w="${w}" data-h="${h}" data-pad="${pad}" data-min="${minH}" data-range="${range}" data-count="${hourly.length}">
         <path d="${fillD}" class="tide-fill"/>
         <path d="${pathD}" class="tide-line"/>
-        <line x1="${nowX}" y1="0" x2="${nowX}" y2="${h}" class="tide-now"/>
+
         <line class="tide-hover-line" x1="0" y1="0" x2="0" y2="${h}" style="display:none"/>
         <circle class="tide-hover-dot" r="3" cx="0" cy="0" style="display:none"/>
         <rect class="tide-hover-zone" x="0" y="0" width="${w}" height="${h}" fill="transparent"/>
