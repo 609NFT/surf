@@ -464,6 +464,8 @@
   });
 
   // --- Tide chart ---
+  let tideHourlyData = null; // Store for hover lookup
+
   async function loadTides() {
     try {
       const res = await fetch('/api/tides');
@@ -476,6 +478,7 @@
       const hilo = data.hilo.filter(t => t.timestamp >= now - 1800 && t.timestamp <= end);
 
       if (hourly.length === 0) return;
+      tideHourlyData = hourly;
 
       const heights = hourly.map(t => t.height);
       const minH = Math.min(...heights);
@@ -484,14 +487,12 @@
 
       // Build SVG path
       const w = 300, h = 32, pad = 2;
-      const points = hourly.map((t, i) => {
+      const pointsArr = hourly.map((t, i) => {
         const x = (i / (hourly.length - 1)) * w;
         const y = pad + (1 - (t.height - minH) / range) * (h - pad * 2);
-        return `${x},${y}`;
+        return { x, y };
       });
-      const pathD = 'M' + points.join(' L');
-
-      // Fill area
+      const pathD = 'M' + pointsArr.map(p => `${p.x},${p.y}`).join(' L');
       const fillD = pathD + ` L${w},${h} L0,${h} Z`;
 
       // Now marker position
@@ -500,7 +501,7 @@
         if (hourly[i].timestamp >= now) {
           const prev = i > 0 ? hourly[i-1] : hourly[i];
           const frac = (now - prev.timestamp) / (hourly[i].timestamp - prev.timestamp || 1);
-          nowX = ((i - 1 + frac) / (hourly.length - 1)) * w;
+          nowX = ((Math.max(0, i - 1) + frac) / (hourly.length - 1)) * w;
           break;
         }
       }
@@ -516,12 +517,18 @@
         return `<text x="${x}" y="${y}" class="tide-label">${timeStr} ${label}</text>`;
       }).join('');
 
-      const svg = `<svg viewBox="0 0 ${w} ${h + 14}" class="tide-svg" preserveAspectRatio="none">
+      // Hover elements: invisible rect + cursor line + dot + tooltip
+      const svg = `<svg viewBox="0 0 ${w} ${h + 14}" class="tide-svg" preserveAspectRatio="none"
+                        data-w="${w}" data-h="${h}" data-pad="${pad}" data-min="${minH}" data-range="${range}" data-count="${hourly.length}">
         <path d="${fillD}" class="tide-fill"/>
         <path d="${pathD}" class="tide-line"/>
         <line x1="${nowX}" y1="0" x2="${nowX}" y2="${h}" class="tide-now"/>
         ${labels}
-      </svg>`;
+        <line class="tide-hover-line" x1="0" y1="0" x2="0" y2="${h}" style="display:none"/>
+        <circle class="tide-hover-dot" r="3" cx="0" cy="0" style="display:none"/>
+        <rect class="tide-hover-zone" x="0" y="0" width="${w}" height="${h + 14}" fill="transparent"/>
+      </svg>
+      <div class="tide-tooltip" style="display:none"></div>`;
 
       // Current tide height
       let currentHeight = heights[0];
@@ -529,7 +536,6 @@
       for (let i = 0; i < hourly.length; i++) {
         if (hourly[i].timestamp >= now) { currentHeight = hourly[i].height; break; }
       }
-      // Find next hi/lo
       const nextHL = hilo.find(t => t.timestamp > now);
       if (nextHL) {
         currentType = nextHL.type === 'H' ? 'Rising' : 'Falling';
@@ -540,13 +546,83 @@
           <span class="timeline-label">Tide</span>
           <span class="tide-current">${currentHeight.toFixed(1)}ft ${currentType}</span>
         </div>
-        ${svg}`;
+        <div class="tide-chart-wrap">
+          ${svg}
+        </div>`;
 
       document.querySelectorAll('.tide-area').forEach(el => {
         el.innerHTML = tideHtml;
       });
     } catch (e) { console.warn('Tide load failed', e); }
   }
+
+  // --- Tide hover handler ---
+  document.addEventListener('mousemove', function(e) {
+    const zone = e.target.closest('.tide-hover-zone');
+    if (!zone || !tideHourlyData) return;
+    const svg = zone.closest('.tide-svg');
+    const wrap = svg.closest('.tide-chart-wrap');
+    const tooltip = wrap.querySelector('.tide-tooltip');
+    const rect = svg.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+
+    const w = parseFloat(svg.dataset.w);
+    const h = parseFloat(svg.dataset.h);
+    const pad = parseFloat(svg.dataset.pad);
+    const minH = parseFloat(svg.dataset.min);
+    const range = parseFloat(svg.dataset.range);
+    const count = tideHourlyData.length;
+
+    const idx = pct * (count - 1);
+    const i0 = Math.floor(idx);
+    const i1 = Math.min(i0 + 1, count - 1);
+    const frac = idx - i0;
+
+    const t = tideHourlyData[i0];
+    const t1 = tideHourlyData[i1];
+    const height = t.height + (t1.height - t.height) * frac;
+    const timestamp = t.timestamp + (t1.timestamp - t.timestamp) * frac;
+
+    const x = pct * w;
+    const y = pad + (1 - (height - minH) / range) * (h - pad * 2);
+
+    const line = svg.querySelector('.tide-hover-line');
+    const dot = svg.querySelector('.tide-hover-dot');
+    line.setAttribute('x1', x); line.setAttribute('x2', x);
+    line.style.display = '';
+    dot.setAttribute('cx', x); dot.setAttribute('cy', y);
+    dot.style.display = '';
+
+    const timeStr = new Date(timestamp * 1000).toLocaleString('en-US', {
+      timeZone: 'America/Los_Angeles', hour: 'numeric', minute: '2-digit', hour12: true
+    });
+
+    tooltip.textContent = `${timeStr}  ${height.toFixed(1)} ft`;
+    tooltip.style.display = '';
+    const tipPct = (e.clientX - rect.left) / rect.width * 100;
+    tooltip.style.left = Math.max(10, Math.min(90, tipPct)) + '%';
+  });
+
+  document.addEventListener('mouseleave', function(e) {
+    if (e.target.closest && e.target.closest('.tide-hover-zone')) {
+      const svg = e.target.closest('.tide-svg');
+      const wrap = svg.closest('.tide-chart-wrap');
+      svg.querySelector('.tide-hover-line').style.display = 'none';
+      svg.querySelector('.tide-hover-dot').style.display = 'none';
+      wrap.querySelector('.tide-tooltip').style.display = 'none';
+    }
+  }, true);
+
+  document.addEventListener('mouseout', function(e) {
+    const zone = e.target.closest('.tide-hover-zone');
+    if (zone && !zone.contains(e.relatedTarget)) {
+      const svg = zone.closest('.tide-svg');
+      const wrap = svg.closest('.tide-chart-wrap');
+      svg.querySelector('.tide-hover-line').style.display = 'none';
+      svg.querySelector('.tide-hover-dot').style.display = 'none';
+      wrap.querySelector('.tide-tooltip').style.display = 'none';
+    }
+  });
 
   // --- Init ---
   updateClock();

@@ -470,6 +470,42 @@ main {
   text-anchor: middle;
 }
 
+.tide-chart-wrap {
+  position: relative;
+}
+
+.tide-hover-line {
+  stroke: rgba(255,255,255,0.3);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.tide-hover-dot {
+  fill: var(--accent);
+  pointer-events: none;
+}
+
+.tide-hover-zone {
+  cursor: crosshair;
+}
+
+.tide-tooltip {
+  position: absolute;
+  top: -22px;
+  transform: translateX(-50%);
+  background: #1c1c1e;
+  border: 1px solid var(--separator);
+  color: var(--text-secondary);
+  font-size: 0.6rem;
+  padding: 2px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+  z-index: 10;
+}
+
 /* Cam area */
 .cam-area:empty {
   display: none;
