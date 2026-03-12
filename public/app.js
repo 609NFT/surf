@@ -404,8 +404,10 @@
     }
 
     const img = slide.querySelector('.cam-still');
+    const imgHeight = img.offsetHeight;
     const video = document.createElement('video');
     video.className = 'cam-video';
+    video.style.minHeight = imgHeight + 'px';
     video.autoplay = true;
     video.muted = true;
     video.playsInline = true;

@@ -425,9 +425,18 @@ main {
 
 .cam-still, .cam-video {
   width: 100%;
-  height: auto;
   display: block;
   border-radius: 10px;
+}
+
+.cam-still {
+  height: auto;
+}
+
+.cam-video {
+  height: auto;
+  min-height: 180px;
+  background: #000;
 }
 
 .cam-still {
