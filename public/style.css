@@ -272,6 +272,7 @@ main {
   width: 13px;
   height: 13px;
   flex-shrink: 0;
+  color: var(--accent);
   stroke: var(--accent);
   opacity: 0.8;
 }
