@@ -499,27 +499,17 @@
         }
       }
 
-      // Hi/lo labels
-      const labels = hilo.map(t => {
-        const idx = hourly.findIndex(h => h.timestamp >= t.timestamp);
-        if (idx < 0) return '';
-        const x = (idx / (hourly.length - 1)) * w;
-        const y = t.type === 'H' ? pad - 1 : h + 10;
-        const timeStr = new Date(t.timestamp * 1000).toLocaleString('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hour12: true });
-        const label = `${t.height.toFixed(1)}ft`;
-        return `<text x="${x}" y="${y}" class="tide-label">${timeStr} ${label}</text>`;
-      }).join('');
+      const labels = '';
 
       // Hover elements: invisible rect + cursor line + dot + tooltip
-      const svg = `<svg viewBox="0 0 ${w} ${h + 14}" class="tide-svg" preserveAspectRatio="none"
+      const svg = `<svg viewBox="0 0 ${w} ${h}" class="tide-svg" preserveAspectRatio="none"
                         data-w="${w}" data-h="${h}" data-pad="${pad}" data-min="${minH}" data-range="${range}" data-count="${hourly.length}">
         <path d="${fillD}" class="tide-fill"/>
         <path d="${pathD}" class="tide-line"/>
         <line x1="${nowX}" y1="0" x2="${nowX}" y2="${h}" class="tide-now"/>
-        ${labels}
         <line class="tide-hover-line" x1="0" y1="0" x2="0" y2="${h}" style="display:none"/>
         <circle class="tide-hover-dot" r="3" cx="0" cy="0" style="display:none"/>
-        <rect class="tide-hover-zone" x="0" y="0" width="${w}" height="${h + 14}" fill="transparent"/>
+        <rect class="tide-hover-zone" x="0" y="0" width="${w}" height="${h}" fill="transparent"/>
       </svg>
       <div class="tide-tooltip" style="display:none"></div>`;
 
