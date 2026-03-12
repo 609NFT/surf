@@ -17,14 +17,14 @@
   };
 
   // Interpolate hex colors
-  function lerpColor(a, b, t) {
-    const ah = parseInt(a.slice(1), 16), bh = parseInt(b.slice(1), 16);
-    const ar = (ah >> 16) & 0xff, ag = (ah >> 8) & 0xff, ab = ah & 0xff;
-    const br = (bh >> 16) & 0xff, bg = (bh >> 8) & 0xff, bb = bh & 0xff;
-    const r = Math.round(ar + (br - ar) * t);
-    const g = Math.round(ag + (bg - ag) * t);
-    const b2 = Math.round(ab + (bb - ab) * t);
-    return `rgb(${r},${g},${b2})`;
+  function lerpColor(c1, c2, t) {
+    const h1 = parseInt(c1.slice(1), 16), h2 = parseInt(c2.slice(1), 16);
+    const r1 = (h1 >> 16) & 0xff, g1 = (h1 >> 8) & 0xff, b1 = h1 & 0xff;
+    const r2 = (h2 >> 16) & 0xff, g2 = (h2 >> 8) & 0xff, b2 = h2 & 0xff;
+    const r = Math.round(r1 + (r2 - r1) * t);
+    const g = Math.round(g1 + (g2 - g1) * t);
+    const b = Math.round(b1 + (b2 - b1) * t);
+    return `rgb(${r},${g},${b})`;
   }
 
   // Continuous color from rating value
