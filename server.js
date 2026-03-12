@@ -79,15 +79,22 @@ async function fetchAllForecasts() {
   const ck = 'forecasts:all'; const cd = getCached(ck); if (cd) return cd;
   const uq = []; const cm = new Map();
   for (const s of SPOTS) { const k = `${s.lat.toFixed(2)},${s.lon.toFixed(2)}`; if (!cm.has(k)) { cm.set(k, uq.length); uq.push({ lat: s.lat, lon: s.lon, key: k }); } }
-  const results = await Promise.all(uq.map(async (c) => {
-    try {
-      const [m, w] = await Promise.all([
-        fetchJSON(`https://marine-api.open-meteo.com/v1/marine?latitude=${c.lat}&longitude=${c.lon}&hourly=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction&timezone=GMT&forecast_days=3`),
-        fetchJSON(`https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lon}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m&timezone=GMT&forecast_days=3&wind_speed_unit=kn`)
-      ]);
-      return { key: c.key, marine: m, weather: w };
-    } catch (e) { return { key: c.key, marine: null, weather: null, error: e.message }; }
-  }));
+  // Batch requests to avoid Open-Meteo rate limiting
+  const results = [];
+  for (let i = 0; i < uq.length; i += 3) {
+    const batch = uq.slice(i, i + 3);
+    const batchResults = await Promise.all(batch.map(async (c) => {
+      try {
+        const [m, w] = await Promise.all([
+          fetchJSON(`https://marine-api.open-meteo.com/v1/marine?latitude=${c.lat}&longitude=${c.lon}&hourly=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction&timezone=GMT&forecast_days=3`),
+          fetchJSON(`https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lon}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m&timezone=GMT&forecast_days=3&wind_speed_unit=kn`)
+        ]);
+        return { key: c.key, marine: m, weather: w };
+      } catch (e) { return { key: c.key, marine: null, weather: null, error: e.message }; }
+    }));
+    results.push(...batchResults);
+    if (i + 3 < uq.length) await new Promise(r => setTimeout(r, 300));
+  }
   const dm = {}; for (const r of results) dm[r.key] = r;
   const sf = SPOTS.map(s => {
     const k = `${s.lat.toFixed(2)},${s.lon.toFixed(2)}`; const d = dm[k];
