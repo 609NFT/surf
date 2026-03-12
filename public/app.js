@@ -529,8 +529,8 @@
 
       const now = Date.now() / 1000;
       const end = now + 48 * 3600;
-      const hourly = data.hourly.filter(t => t.timestamp >= now - 1800 && t.timestamp <= end);
-      const hilo = data.hilo.filter(t => t.timestamp >= now - 1800 && t.timestamp <= end);
+      const hourly = data.hourly.filter(t => t.timestamp >= now - 3600 && t.timestamp <= end);
+      const hilo = data.hilo.filter(t => t.timestamp >= now - 3600 && t.timestamp <= end);
 
       if (hourly.length === 0) return;
       tideHourlyData = hourly;
