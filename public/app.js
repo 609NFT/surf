@@ -406,30 +406,35 @@
     video.playsInline = true;
     video.controls = true;
 
+    // Append auth token to stream URL
+    const authedStream = streamUrl + (streamUrl.includes('?') ? '&' : '?') + 'accesstoken=' + (slToken || '');
+
     // Safari/iOS: native HLS support (no CORS issues)
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = streamUrl;
+      video.src = authedStream;
     } else if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-      // Chrome/Firefox: use hls.js
-      const hls = new Hls({ maxBufferLength: 10, maxMaxBufferLength: 20 });
+      const hls = new Hls({
+        maxBufferLength: 10,
+        maxMaxBufferLength: 20,
+        xhrSetup: function(xhr) {
+          // Let the CDN handle auth via URL token
+        }
+      });
       hls.on(Hls.Events.ERROR, function(event, data) {
-        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-          console.warn('HLS network error (likely CORS), opening in new tab');
+        if (data.fatal) {
+          console.warn('HLS fatal error:', data.type, data.details);
           hls.destroy();
           video.remove();
           img.style.display = '';
           playBtn.innerHTML = '<i data-lucide="play" class="play-icon"></i>';
           if (window.lucide) lucide.createIcons();
-          // Fall back: open stream URL directly
-          window.open(streamUrl, '_blank');
         }
       });
-      hls.loadSource(streamUrl);
+      hls.loadSource(authedStream);
       hls.attachMedia(video);
       video._hls = hls;
     } else {
-      // No HLS support, open in new tab
-      window.open(streamUrl, '_blank');
+      window.open(authedStream, '_blank');
       return;
     }
 
