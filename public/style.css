@@ -331,6 +331,65 @@ main {
   position: relative;
 }
 
+.forecast-timeline-blend {
+  position: relative;
+  margin-top: 0.25rem;
+}
+
+.tl-gradient {
+  width: 100%;
+  height: 12px;
+  border-radius: 6px;
+}
+
+.tl-hover-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 12px;
+  display: flex;
+  border-radius: 6px;
+}
+
+.tl-hover-seg {
+  flex: 1;
+  position: relative;
+}
+
+.tl-hover-seg:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1c1c1e;
+  border: 1px solid var(--separator);
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  white-space: nowrap;
+  z-index: 10;
+  color: var(--text-primary);
+  pointer-events: none;
+}
+
+.tl-time-layer {
+  position: relative;
+  height: 12px;
+}
+
+.tl-time-abs {
+  position: absolute;
+  top: 2px;
+  transform: translateX(-50%);
+  font-size: 0.45rem;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}
+
 .timeline-seg-wrap {
   flex: 1;
   min-width: 1px;

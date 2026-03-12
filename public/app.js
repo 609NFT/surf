@@ -267,27 +267,41 @@
     const timeline = getNextHours(spot.forecast.hourly, 48);
     let timelineHtml = '';
     if (timeline.length > 0) {
-      const segments = timeline.map((h, i) => {
-        const rInfo = getRatingInfo(h);
-        const color = rInfo.color;
+      // Build gradient stops from rating colors
+      const colors = timeline.map(h => getRatingInfo(h).color);
+      const stops = colors.map((c, i) => `${c} ${((i / (colors.length - 1)) * 100).toFixed(1)}%`).join(', ');
+      const gradient = `linear-gradient(to right, ${stops})`;
+
+      // Build time labels
+      const timeLabels = timeline.map((h, i) => {
+        const d = new Date(h.time);
+        const hr = parseInt(d.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hour12: false }));
+        if (hr % 6 !== 0) return '';
+        const pct = (i / (timeline.length - 1)) * 100;
         const time = formatHour(h.time);
-        const label = rInfo.label;
+        return `<span class="tl-time-abs" style="left:${pct.toFixed(1)}%">${time}</span>`;
+      }).join('');
+
+      // Build invisible hover segments for tooltips
+      const hoverSegs = timeline.map((h, i) => {
+        const rInfo = getRatingInfo(h);
+        const time = formatHour(h.time);
         let ht = '';
         if (h.waveMin != null && h.waveMax != null && h.source === 'surfline') {
           ht = `${Math.round(h.waveMin)}-${Math.round(h.waveMax)}ft`;
         } else if (h.waveHeight != null) {
           ht = h.waveHeight.toFixed(1) + 'ft';
         }
-        // Show time label every 6 hours (Pacific time)
-        const d = new Date(h.time);
-        const hr = parseInt(d.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hour12: false }));
-        const showLabel = (hr % 6 === 0);
-        const timeLabel = showLabel ? `<span class="tl-time">${time}</span>` : '';
-        return `<div class="timeline-seg-wrap"><div class="timeline-segment" style="background:${color}" data-tip="${time}: ${label} ${ht}"></div>${timeLabel}</div>`;
+        return `<div class="tl-hover-seg" data-tip="${time}: ${rInfo.label} ${ht}"></div>`;
       }).join('');
+
       timelineHtml = `
         <div class="timeline-label">Quality (48h)</div>
-        <div class="forecast-timeline">${segments}</div>`;
+        <div class="forecast-timeline-blend">
+          <div class="tl-gradient" style="background:${gradient}"></div>
+          <div class="tl-hover-layer">${hoverSegs}</div>
+          <div class="tl-time-layer">${timeLabels}</div>
+        </div>`;
     }
 
     card.innerHTML = `
