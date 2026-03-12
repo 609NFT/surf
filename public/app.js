@@ -239,7 +239,7 @@
         return `<div class="timeline-seg-wrap"><div class="timeline-segment" style="background:${color}" data-tip="${time}: ${label} ${ht}"></div>${timeLabel}</div>`;
       }).join('');
       timelineHtml = `
-        <div class="timeline-label">Next 48h forecast</div>
+        <div class="timeline-label">Quality (48h)</div>
         <div class="forecast-timeline">${segments}</div>`;
     }
 
