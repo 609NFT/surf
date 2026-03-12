@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🌊 Encinitas Surf Forecast</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌊</text></svg>">
+</head>
+<body>
+  <header>
+    <div class="header-content">
+      <h1>🌊 Encinitas Surf Forecast</h1>
+      <div class="header-meta">
+        <span id="current-time"></span>
+        <span id="last-updated"></span>
+      </div>
+    </div>
+    <div id="buoy-bar" class="buoy-bar hidden">
+      <div class="buoy-title">📡 Buoy 46224 — Oceanside Offshore</div>
+      <div class="buoy-stats" id="buoy-stats"></div>
+    </div>
+  </header>
+
+  <main>
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>Fetching surf data...</p>
+    </div>
+    <div id="spots-grid" class="spots-grid"></div>
+  </main>
+
+  <footer>
+    <p>Data from <a href="https://www.surfline.com" target="_blank">Surfline</a> & <a href="https://www.ndbc.noaa.gov/station_page.php?station=46224" target="_blank">NDBC</a> · Auto-refreshes every 15 min</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
