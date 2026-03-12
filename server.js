@@ -6,6 +6,7 @@ const url = require('url');
 
 const PORT = process.env.PORT || 4001;
 const SURFLINE_TOKEN = process.env.SURFLINE_TOKEN || 'e1d5672dc48ca4e553e619e8da48794aa9c10256';
+const CF_PROXY = 'https://surfline-proxy.solindex.workers.dev';
 
 // --- Spot data with break characteristics ---
 const SPOTS = [
@@ -184,7 +185,74 @@ function calculateRating(spot, waveHeightFt, periodSec, windSpeedKts, windDir, s
   return normalized === 0 && waveHeightFt >= 0.5 ? 1 : normalized;
 }
 
-// --- Open-Meteo ---
+// --- Surfline via CF Worker proxy ---
+function slUrl(endpoint, spotId, extraParams = '') {
+  const base = `https://services.surfline.com/kbyg/spots/forecasts/${endpoint}?spotId=${spotId}&days=2&intervalHours=1&cacheEnabled=true&accesstoken=${SURFLINE_TOKEN}${extraParams}`;
+  return `${CF_PROXY}/proxy?url=${encodeURIComponent(base)}`;
+}
+
+async function fetchSurflineForecasts() {
+  const ck = 'surfline:all'; const cd = getCached(ck); if (cd) return cd;
+  const results = {};
+  // Batch 3 spots at a time to be nice to the worker
+  for (let i = 0; i < SPOTS.length; i += 3) {
+    const batch = SPOTS.slice(i, i + 3);
+    const batchResults = await Promise.all(batch.map(async (s) => {
+      try {
+        const [rating, surf, wind] = await Promise.all([
+          fetchJSON(slUrl('rating', s.id)),
+          fetchJSON(slUrl('surf', s.id, '&units%5BwaveHeight%5D=FT')),
+          fetchJSON(slUrl('wind', s.id, '&corrected=true&units%5BwindSpeed%5D=KTS'))
+        ]);
+        return { id: s.id, rating, surf, wind };
+      } catch (e) {
+        console.error(`Surfline fetch failed for ${s.name}: ${e.message}`);
+        return { id: s.id, error: e.message };
+      }
+    }));
+    batchResults.forEach(r => results[r.id] = r);
+    if (i + 3 < SPOTS.length) await new Promise(r => setTimeout(r, 200));
+  }
+  setCache(ck, results);
+  return results;
+}
+
+function buildSurflineSpots(slData) {
+  return SPOTS.map(s => {
+    const sl = slData[s.id];
+    if (!sl || sl.error || !sl.rating?.data?.rating) return null;
+    const ratings = sl.rating.data.rating;
+    const surfs = sl.surf?.data?.surf || [];
+    const winds = sl.wind?.data?.wind || [];
+    const hourly = ratings.map((r, i) => {
+      const sf = surfs[i] || {};
+      const wn = winds[i] || {};
+      const waveMin = sf.surf?.min || 0;
+      const waveMax = sf.surf?.max || 0;
+      const waveHeight = (waveMin + waveMax) / 2;
+      return {
+        time: new Date(r.timestamp * 1000).toISOString(),
+        timestamp: r.timestamp,
+        waveHeight,
+        waveMin,
+        waveMax,
+        swellHeight: waveHeight,
+        wavePeriod: sf.surf?.period || 0,
+        waveDir: null,
+        swellDir: null,
+        windSpeed: wn.speed || 0,
+        windDir: wn.direction || 0,
+        windGusts: wn.gust || 0,
+        rating: r.rating?.value || 0,
+        ratingKey: r.rating?.key || 'FLAT',
+        source: 'surfline'
+      };
+    });
+    return { ...s, forecast: { hourly } };
+  });
+}
+
+// --- Open-Meteo (fallback) ---
 async function fetchAllForecasts() {
   const ck = 'forecasts:all'; const cd = getCached(ck); if (cd) return cd;
   const uq = []; const cm = new Map();
@@ -261,9 +329,29 @@ const server = http.createServer(async (req, res) => {
   // API routes
   if (pathname === '/api/forecasts') {
     try {
-      const spots = await fetchAllForecasts();
+      // Try Surfline first, fall back to Open-Meteo
+      let spots;
+      let source = 'open-meteo';
+      try {
+        const slData = await fetchSurflineForecasts();
+        const slSpots = buildSurflineSpots(slData);
+        const validCount = slSpots.filter(s => s !== null).length;
+        if (validCount >= 10) {
+          // Fill any missing spots with Open-Meteo
+          const omSpots = await fetchAllForecasts();
+          spots = SPOTS.map((s, i) => slSpots[i] || omSpots[i]);
+          source = 'surfline';
+          console.log(`Using Surfline data (${validCount}/14 spots)`);
+        } else {
+          spots = await fetchAllForecasts();
+          console.log(`Surfline only got ${validCount} spots, using Open-Meteo`);
+        }
+      } catch (e) {
+        console.log(`Surfline failed (${e.message}), using Open-Meteo`);
+        spots = await fetchAllForecasts();
+      }
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ spots, timestamp: new Date().toISOString() }));
+      res.end(JSON.stringify({ spots, source, timestamp: new Date().toISOString() }));
     } catch (e) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Internal error' }));

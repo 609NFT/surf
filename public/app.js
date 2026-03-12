@@ -190,17 +190,25 @@
 
     const current = getCurrentHour(spot.forecast.hourly);
     const ratingVal = current ? current.rating : 0;
-    const ratingLabel = RATING_LABELS[ratingVal] || 'FLAT';
-    const ratingClass = RATING_CLASSES[ratingVal] || 'flat';
-    const dotClass = DOT_CLASSES[ratingVal] || '';
+    // Use Surfline's rating label if available, otherwise our scale
+    const ratingLabel = (current && current.ratingKey)
+      ? current.ratingKey.replace(/_/g, ' ')
+      : (RATING_LABELS[ratingVal] || 'FLAT');
+    const ratingClass = RATING_CLASSES[Math.min(ratingVal, 6)] || 'flat';
+    const dotClass = DOT_CLASSES[Math.min(ratingVal, 6)] || '';
 
     const slug = slugify(spot.name);
     const surflineUrl = `https://www.surfline.com/surf-report/${slug}/${spot.id}`;
     const camUrl = `https://www.surfline.com/surf-report/${slug}/${spot.id}#cam`;
 
-    // Wave info
+    // Wave info — use Surfline min/max if available
     let waveStr = '—';
-    if (current && current.waveHeight != null) {
+    if (current && current.waveMin != null && current.waveMax != null && current.source === 'surfline') {
+      const min = Math.round(current.waveMin);
+      const max = Math.round(current.waveMax);
+      if (max < 1) waveStr = '< 1 ft';
+      else waveStr = min === max ? `${max} ft` : `${min}–${max} ft`;
+    } else if (current && current.waveHeight != null) {
       const min = Math.max(0, current.waveHeight - 0.5).toFixed(0);
       const max = (current.waveHeight + 0.5).toFixed(0);
       if (current.waveHeight < 0.5) {
@@ -242,8 +250,13 @@
         const val = h.rating || 0;
         const color = RATING_COLORS[val] || RATING_COLORS[0];
         const time = formatHour(h.time);
-        const label = RATING_LABELS[val];
-        const ht = h.waveHeight != null ? h.waveHeight.toFixed(1) + 'ft' : '';
+        const label = h.ratingKey ? h.ratingKey.replace(/_/g, ' ') : RATING_LABELS[val];
+        let ht = '';
+        if (h.waveMin != null && h.waveMax != null && h.source === 'surfline') {
+          ht = `${Math.round(h.waveMin)}-${Math.round(h.waveMax)}ft`;
+        } else if (h.waveHeight != null) {
+          ht = h.waveHeight.toFixed(1) + 'ft';
+        }
         // Show time label every 6 hours (Pacific time)
         const d = new Date(h.time);
         const hr = parseInt(d.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hour12: false }));
