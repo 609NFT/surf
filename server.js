@@ -435,7 +435,7 @@ const server = http.createServer(async (req, res) => {
       const today = data.today?.forecast || {};
       const result = {
         headline: today.headline || '',
-        observation: (today.observation || '').replace(/<br\s*\/?>/g, '\n').replace(/<[^>]+>/g, ''),
+        observation: (today.observation || '').replace(/<br\s*\/?>/g, '\n').replace(/<[^>]+>/g, '').replace(/\n{3,}/g, '\n\n').trim(),
         forecaster: data.forecaster?.name || '',
         dayToWatch: today.dayToWatch || false,
         date: data.today?.date || '',

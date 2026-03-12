@@ -123,7 +123,7 @@
         ${d.dayToWatch ? '<span class="day-to-watch">Day to Watch</span>' : ''}
         <div class="forecast-headline">${d.headline}</div>
         <div class="forecast-observation">${d.observation}</div>
-        <div class="forecast-meta">${d.forecaster ? d.forecaster + ' · ' : ''}${d.subregion || 'North San Diego'}</div>`;
+        <div class="forecast-meta">${d.subregion || 'North San Diego'}</div>`;
     } catch (e) { /* no forecast text */ }
   }
 
