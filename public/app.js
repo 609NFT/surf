@@ -1,7 +1,7 @@
 (() => {
   const RATING_LABELS = ['FLAT', 'VERY POOR', 'POOR', 'POOR TO FAIR', 'FAIR', 'FAIR TO GOOD', 'GOOD'];
   const RATING_CLASSES = ['flat', 'very-poor', 'poor', 'poor-to-fair', 'fair', 'fair-to-good', 'good'];
-  const RATING_COLORS = ['#334455', '#e63946', '#f77f00', '#fcbf49', '#fcbf49', '#2ec4b6', '#06d6a0'];
+  const RATING_COLORS = ['#1c1c1e', '#ff453a', '#ff9f0a', '#ffd60a', '#ffd60a', '#30d158', '#30d158'];
   const DOT_CLASSES = ['', 'very-poor', 'poor', 'poor', 'fair', 'good', 'good'];
 
   const REFRESH_INTERVAL = 15 * 60 * 1000;
