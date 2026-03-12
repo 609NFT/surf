@@ -20,49 +20,65 @@
   // Known Surfline camera mappings for our spots
   // Still images on camstills CDN can be loaded as <img> (no CORS)
   // Stream URLs need hls.js
+  // Verified Surfline camera map (from spots/reports API via d.spot.cameras)
+  const S = 'https://hls.cdn-surfline.com/oregon/';
   const SPOT_CAMS = {
     '5842041f4e65fad6a7708832': [ // Oceanside Harbor
-      { alias: 'wc-oceansideharbor', title: 'Harbor', stream: 'https://hls.cdn-surfline.com/oregon/wc-oceansideharbor/playlist.m3u8' }
+      { alias: 'wc-osideharbornjetty', title: 'North Jetty', stream: S+'wc-osideharbornjetty/playlist.m3u8' },
+      { alias: 'wc-osideharbor', title: 'Harbor', stream: S+'wc-osideharbor/playlist.m3u8' },
+      { alias: 'wc-osideharborsjetty', title: 'South Jetty', stream: S+'wc-osideharborsjetty/playlist.m3u8' }
     ],
     '584204204e65fad6a7709435': [ // Oceanside Pier
-      { alias: 'wc-oceansidepiersouth', title: 'Pier South', stream: 'https://hls.cdn-surfline.com/oregon/wc-oceansidepiersouth/playlist.m3u8' },
-      { alias: 'wc-oceansidepiernorth', title: 'Pier North', stream: 'https://hls.cdn-surfline.com/oregon/wc-oceansidepiernorth/playlist.m3u8' }
+      { alias: 'wc-oceansidepierns', title: 'Pier Northside', stream: S+'wc-oceansidepierns/playlist.m3u8' },
+      { alias: 'wc-osidepiernsov', title: 'Pier North Overview', stream: S+'wc-osidepiernsov/playlist.m3u8' },
+      { alias: 'wc-osidepierssov', title: 'Pier South Overview', stream: S+'wc-osidepierssov/playlist.m3u8' },
+      { alias: 'wc-osidessov', title: 'Southside Overview', stream: S+'wc-osidessov/playlist.m3u8' },
+      { alias: 'wc-oceansidepierss', title: 'Pier Southside', stream: S+'wc-oceansidepierss/playlist.m3u8' }
     ],
     '5842041f4e65fad6a7708837': [ // Tamarack
-      { alias: 'wc-tamarack', title: 'Tamarack', stream: 'https://hls.cdn-surfline.com/oregon/wc-tamarack/playlist.m3u8' }
+      { alias: 'wc-tamarack', title: 'Tamarack', stream: S+'wc-tamarack/playlist.m3u8' }
+    ],
+    '5842041f4e65fad6a77088a6': [ // Terra Mar
+      { alias: 'wc-terramarpt', title: 'Terra Mar Point', stream: S+'wc-terramarpt/playlist.m3u8' }
     ],
     '5842041f4e65fad6a77088a5': [ // Ponto
-      { alias: 'wc-pontonorth', title: 'Ponto North', stream: 'https://hls.cdn-surfline.com/oregon/wc-pontonorth/playlist.m3u8' },
-      { alias: 'wc-pontojetties', title: 'Ponto Jetties', stream: 'https://hls.cdn-surfline.com/oregon/wc-pontojetties/playlist.m3u8' },
-      { alias: 'wc-pontosouth', title: 'Ponto South', stream: 'https://hls.cdn-surfline.com/oregon/wc-pontosouth/playlist.m3u8' },
-      { alias: 'wc-pontosouthov', title: 'Ponto South Overview', stream: 'https://hls.cdn-surfline.com/oregon/wc-pontosouthov/playlist.m3u8' }
+      { alias: 'wc-pontonorth', title: 'Ponto North', stream: S+'wc-pontonorth/playlist.m3u8' },
+      { alias: 'wc-pontojetties', title: 'Ponto Jetties', stream: S+'wc-pontojetties/playlist.m3u8' },
+      { alias: 'wc-pontosouth', title: 'Ponto South', stream: S+'wc-pontosouth/playlist.m3u8' },
+      { alias: 'wc-pontosouthov', title: 'Ponto South Overview', stream: S+'wc-pontosouthov/playlist.m3u8' }
     ],
     '5842041f4e65fad6a770889f': [ // Grandview
-      { alias: 'wc-grandview', title: 'Grandview', stream: 'https://hls.cdn-surfline.com/oregon/wc-grandview/playlist.m3u8' }
+      { alias: 'wc-grandview', title: 'Grandview', stream: S+'wc-grandview/playlist.m3u8' },
+      { alias: 'wc-grandviewsouth', title: 'Grandview South', stream: S+'wc-grandviewsouth/playlist.m3u8' }
     ],
     '5842041f4e65fad6a77088a0': [ // Beacons
-      { alias: 'wc-beacons', title: 'Beacons', stream: 'https://hls.cdn-surfline.com/oregon/wc-beacons/playlist.m3u8' }
+      { alias: 'wc-beacons', title: 'Beacons', stream: S+'wc-beacons/playlist.m3u8' },
+      { alias: 'wc-beaconsnorth', title: 'Beacons North', stream: S+'wc-beaconsnorth/playlist.m3u8' }
     ],
     '5842041f4e65fad6a77088b7': [ // D Street
-      { alias: 'wc-dstreet', title: 'D Street', stream: 'https://hls.cdn-surfline.com/oregon/wc-dstreet/playlist.m3u8' }
+      { alias: 'wc-dstreet', title: 'D Street', stream: S+'wc-dstreet/playlist.m3u8' }
     ],
     '5842041f4e65fad6a77088b4': [ // Swamis
-      { alias: 'wc-swamis', title: 'Swamis', stream: 'https://hls.cdn-surfline.com/oregon/wc-swamis/playlist.m3u8' }
+      { alias: 'wc-swamis', title: "Swami's", stream: S+'wc-swamis/playlist.m3u8' },
+      { alias: 'wc-swamisclose', title: "Swami's Close-Up", stream: S+'wc-swamisclose/playlist.m3u8' }
     ],
     '5c008f5313603c0001df5318': [ // Pipes
-      { alias: 'wc-pipes', title: 'Pipes', stream: 'https://hls.cdn-surfline.com/oregon/wc-pipes/playlist.m3u8' }
+      { alias: 'wc-pipes', title: 'Pipes', stream: S+'wc-pipes/playlist.m3u8' }
     ],
     '5842041f4e65fad6a77088b1': [ // Cardiff Reef
-      { alias: 'wc-cardiffreef', title: 'Cardiff Reef', stream: 'https://hls.cdn-surfline.com/oregon/wc-cardiffreef/playlist.m3u8' }
+      { alias: 'wc-cardiffov', title: 'Cardiff Overview', stream: S+'wc-cardiffov/playlist.m3u8' },
+      { alias: 'wc-cardiffreefsouth', title: 'Cardiff South', stream: S+'wc-cardiffreefsouth/playlist.m3u8' },
+      { alias: 'wc-cardiffreefnorth', title: 'Cardiff North', stream: S+'wc-cardiffreefnorth/playlist.m3u8' }
     ],
     '5842041f4e65fad6a77088b3': [ // Seaside Reef
-      { alias: 'wc-seasidereef', title: 'Seaside Reef', stream: 'https://hls.cdn-surfline.com/oregon/wc-seasidereef/playlist.m3u8' }
+      { alias: 'wc-seasidereef', title: 'Seaside Reef', stream: S+'wc-seasidereef/playlist.m3u8' }
     ],
-    '5842041f4e65fad6a77088b0': [ // Del Mar Rivermouth
-      { alias: 'wc-delmarrivermouth', title: 'Rivermouth', stream: 'https://hls.cdn-surfline.com/oregon/wc-delmarrivermouth/playlist.m3u8' }
-    ],
+    // Del Mar Rivermouth: no cameras
     '5842041f4e65fad6a77088af': [ // 15th Street Del Mar
-      { alias: 'wc-15thstreet', title: '15th Street', stream: 'https://hls.cdn-surfline.com/oregon/wc-15thstreet/playlist.m3u8' }
+      { alias: 'wc-delmar15th', title: '15th St Del Mar', stream: S+'wc-delmar15th/playlist.m3u8' },
+      { alias: 'wc-delmar', title: 'Del Mar', stream: S+'wc-delmar/playlist.m3u8' },
+      { alias: 'wc-delmarbeachbreak', title: 'Del Mar Beachbreak', stream: S+'wc-delmarbeachbreak/playlist.m3u8' },
+      { alias: 'wc-delmar25th', title: '25th St Del Mar', stream: S+'wc-delmar25th/playlist.m3u8' }
     ]
   };
 
@@ -362,23 +378,27 @@
 
   // --- Live stream player ---
   document.addEventListener('click', function(e) {
-    const wrapper = e.target.closest('.cam-wrapper[data-stream]');
-    if (!wrapper) return;
-    const streamUrl = wrapper.dataset.stream;
+    const playBtn = e.target.closest('.cam-play');
+    if (!playBtn) return;
+    e.stopPropagation();
+
+    const slide = playBtn.closest('.cam-slide');
+    if (!slide) return;
+    const streamUrl = slide.dataset.stream;
     if (!streamUrl) return;
 
     // If already playing, toggle back to still
-    const existingVideo = wrapper.querySelector('video');
+    const existingVideo = slide.querySelector('video');
     if (existingVideo) {
       if (existingVideo._hls) existingVideo._hls.destroy();
       existingVideo.remove();
-      wrapper.querySelector('.cam-still').style.display = '';
-      wrapper.querySelector('.cam-play').innerHTML = '<i data-lucide="play" class="play-icon"></i>';
+      slide.querySelector('.cam-still').style.display = '';
+      playBtn.innerHTML = '<i data-lucide="play" class="play-icon"></i>';
       if (window.lucide) lucide.createIcons();
       return;
     }
 
-    const img = wrapper.querySelector('.cam-still');
+    const img = slide.querySelector('.cam-still');
     const video = document.createElement('video');
     video.className = 'cam-video';
     video.autoplay = true;
@@ -386,22 +406,37 @@
     video.playsInline = true;
     video.controls = true;
 
-    if (Hls.isSupported()) {
+    // Safari/iOS: native HLS support (no CORS issues)
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = streamUrl;
+    } else if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+      // Chrome/Firefox: use hls.js
       const hls = new Hls({ maxBufferLength: 10, maxMaxBufferLength: 20 });
+      hls.on(Hls.Events.ERROR, function(event, data) {
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+          console.warn('HLS network error (likely CORS), opening in new tab');
+          hls.destroy();
+          video.remove();
+          img.style.display = '';
+          playBtn.innerHTML = '<i data-lucide="play" class="play-icon"></i>';
+          if (window.lucide) lucide.createIcons();
+          // Fall back: open stream URL directly
+          window.open(streamUrl, '_blank');
+        }
+      });
       hls.loadSource(streamUrl);
       hls.attachMedia(video);
       video._hls = hls;
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = streamUrl;
+    } else {
+      // No HLS support, open in new tab
+      window.open(streamUrl, '_blank');
+      return;
     }
 
     img.style.display = 'none';
-    wrapper.insertBefore(video, img);
-    const playBtn = wrapper.querySelector('.cam-play');
-    if (playBtn) {
-      playBtn.innerHTML = '<i data-lucide="square" class="play-icon"></i>';
-      if (window.lucide) lucide.createIcons();
-    }
+    slide.insertBefore(video, img);
+    playBtn.innerHTML = '<i data-lucide="square" class="play-icon"></i>';
+    if (window.lucide) lucide.createIcons();
   });
 
   // --- Init ---
