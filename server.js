@@ -7,22 +7,36 @@ const url = require('url');
 const PORT = process.env.PORT || 4001;
 const SURFLINE_TOKEN = process.env.SURFLINE_TOKEN || 'e1d5672dc48ca4e553e619e8da48794aa9c10256';
 
-// --- Spot data ---
+// --- Spot data with break characteristics ---
 const SPOTS = [
-  { name: "Oceanside Harbor", id: "5842041f4e65fad6a7708832", lat: 33.204, lon: -117.396 },
-  { name: "Oceanside Pier", id: "584204204e65fad6a7709435", lat: 33.193, lon: -117.387 },
-  { name: "Tamarack", id: "5842041f4e65fad6a7708837", lat: 33.147, lon: -117.347 },
-  { name: "Terra Mar", id: "5842041f4e65fad6a77088a6", lat: 33.129, lon: -117.336 },
-  { name: "Ponto", id: "5842041f4e65fad6a77088a5", lat: 33.087, lon: -117.314 },
-  { name: "Grandview", id: "5842041f4e65fad6a770889f", lat: 33.075, lon: -117.311 },
-  { name: "Beacons", id: "5842041f4e65fad6a77088a0", lat: 33.064, lon: -117.306 },
-  { name: "D Street", id: "5842041f4e65fad6a77088b7", lat: 33.045, lon: -117.298 },
-  { name: "Swamis", id: "5842041f4e65fad6a77088b4", lat: 33.034, lon: -117.296 },
-  { name: "Pipes", id: "5c008f5313603c0001df5318", lat: 33.025, lon: -117.289 },
-  { name: "Cardiff Reef", id: "5842041f4e65fad6a77088b1", lat: 33.015, lon: -117.283 },
-  { name: "Seaside Reef", id: "5842041f4e65fad6a77088b3", lat: 33.002, lon: -117.280 },
-  { name: "Del Mar Rivermouth", id: "5842041f4e65fad6a77088b0", lat: 32.975, lon: -117.271 },
-  { name: "15th Street Del Mar", id: "5842041f4e65fad6a77088af", lat: 32.959, lon: -117.269 }
+  { name: "Oceanside Harbor", id: "5842041f4e65fad6a7708832", lat: 33.204, lon: -117.396,
+    type: 'jetty', facing: 250, swellMin: 230, swellMax: 320, minWave: 2, maxWave: 10, optTideLow: 0, optTideHigh: 5, shoreNormal: 250 },
+  { name: "Oceanside Pier", id: "584204204e65fad6a7709435", lat: 33.193, lon: -117.387,
+    type: 'beach', facing: 260, swellMin: 210, swellMax: 310, minWave: 2, maxWave: 8, optTideLow: 1, optTideHigh: 4, shoreNormal: 260 },
+  { name: "Tamarack", id: "5842041f4e65fad6a7708837", lat: 33.147, lon: -117.347,
+    type: 'beach', facing: 255, swellMin: 200, swellMax: 290, minWave: 2, maxWave: 7, optTideLow: 1, optTideHigh: 4, shoreNormal: 255 },
+  { name: "Terra Mar", id: "5842041f4e65fad6a77088a6", lat: 33.129, lon: -117.336,
+    type: 'reef', facing: 250, swellMin: 190, swellMax: 280, minWave: 2, maxWave: 8, optTideLow: 0, optTideHigh: 3.5, shoreNormal: 250 },
+  { name: "Ponto", id: "5842041f4e65fad6a77088a5", lat: 33.087, lon: -117.314,
+    type: 'beach', facing: 250, swellMin: 180, swellMax: 280, minWave: 2, maxWave: 7, optTideLow: 1, optTideHigh: 4, shoreNormal: 250 },
+  { name: "Grandview", id: "5842041f4e65fad6a770889f", lat: 33.075, lon: -117.311,
+    type: 'reef_beach', facing: 250, swellMin: 190, swellMax: 280, minWave: 2, maxWave: 8, optTideLow: 0.5, optTideHigh: 3.5, shoreNormal: 250 },
+  { name: "Beacons", id: "5842041f4e65fad6a77088a0", lat: 33.064, lon: -117.306,
+    type: 'reef', facing: 245, swellMin: 180, swellMax: 270, minWave: 2, maxWave: 8, optTideLow: 0, optTideHigh: 3, shoreNormal: 245 },
+  { name: "D Street", id: "5842041f4e65fad6a77088b7", lat: 33.045, lon: -117.298,
+    type: 'beach', facing: 250, swellMin: 190, swellMax: 280, minWave: 2, maxWave: 7, optTideLow: 1, optTideHigh: 4.5, shoreNormal: 250 },
+  { name: "Swamis", id: "5842041f4e65fad6a77088b4", lat: 33.034, lon: -117.296,
+    type: 'reef_point', facing: 240, swellMin: 180, swellMax: 270, minWave: 2, maxWave: 10, optTideLow: -0.5, optTideHigh: 3, shoreNormal: 240 },
+  { name: "Pipes", id: "5c008f5313603c0001df5318", lat: 33.025, lon: -117.289,
+    type: 'reef', facing: 245, swellMin: 190, swellMax: 275, minWave: 2, maxWave: 8, optTideLow: 0, optTideHigh: 3, shoreNormal: 245 },
+  { name: "Cardiff Reef", id: "5842041f4e65fad6a77088b1", lat: 33.015, lon: -117.283,
+    type: 'reef', facing: 240, swellMin: 180, swellMax: 265, minWave: 2, maxWave: 8, optTideLow: -0.5, optTideHigh: 3, shoreNormal: 240 },
+  { name: "Seaside Reef", id: "5842041f4e65fad6a77088b3", lat: 33.002, lon: -117.280,
+    type: 'reef', facing: 245, swellMin: 190, swellMax: 275, minWave: 3, maxWave: 10, optTideLow: -0.5, optTideHigh: 2.5, shoreNormal: 245 },
+  { name: "Del Mar Rivermouth", id: "5842041f4e65fad6a77088b0", lat: 32.975, lon: -117.271,
+    type: 'beach', facing: 255, swellMin: 200, swellMax: 290, minWave: 2, maxWave: 6, optTideLow: 1, optTideHigh: 4, shoreNormal: 255 },
+  { name: "15th Street Del Mar", id: "5842041f4e65fad6a77088af", lat: 32.959, lon: -117.269,
+    type: 'beach', facing: 260, swellMin: 200, swellMax: 290, minWave: 2, maxWave: 7, optTideLow: 1, optTideHigh: 4, shoreNormal: 260 }
 ];
 
 // --- Cache ---
@@ -46,32 +60,128 @@ function fetchUrl(u) {
 async function fetchJSON(u) { return JSON.parse(await fetchUrl(u)); }
 
 // --- Surf Rating ---
-function calculateRating(waveHeightFt, periodSec, windSpeedKts, windDir) {
+// --- Tide data cache for rating ---
+let tideCache = null;
+async function getTideData() {
+  if (tideCache && Date.now() - tideCache.ts < CACHE_TTL) return tideCache.data;
+  try {
+    const today = new Date();
+    const end = new Date(today.getTime() + 3 * 86400000);
+    const fmt = d => d.toISOString().slice(0,10).replace(/-/g,'');
+    const res = await fetchJSON(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${fmt(today)}&end_date=${fmt(end)}&station=9410230&product=predictions&datum=MLLW&time_zone=gmt&units=english&interval=h&format=json`);
+    const data = (res.predictions || []).map(p => ({ timestamp: new Date(p.t + 'Z').getTime() / 1000, height: parseFloat(p.v) }));
+    tideCache = { data, ts: Date.now() };
+    return data;
+  } catch (e) { return null; }
+}
+
+function getTideAtTime(tideData, timestamp) {
+  if (!tideData || !tideData.length) return null;
+  for (let i = 0; i < tideData.length - 1; i++) {
+    if (tideData[i].timestamp <= timestamp && tideData[i+1].timestamp > timestamp) {
+      const frac = (timestamp - tideData[i].timestamp) / (tideData[i+1].timestamp - tideData[i].timestamp);
+      return tideData[i].height + (tideData[i+1].height - tideData[i].height) * frac;
+    }
+  }
+  return tideData[0].height;
+}
+
+function angleDiff(a, b) {
+  let d = ((b - a) % 360 + 360) % 360;
+  return d > 180 ? 360 - d : d;
+}
+
+function calculateRating(spot, waveHeightFt, periodSec, windSpeedKts, windDir, swellDir, tideHeight) {
   if (waveHeightFt == null || waveHeightFt < 0.5) return 0;
-  let hs = 0;
-  if (waveHeightFt >= 1 && waveHeightFt < 2) hs = 0.5;
-  else if (waveHeightFt >= 2 && waveHeightFt < 3) hs = 1;
-  else if (waveHeightFt >= 3 && waveHeightFt < 4) hs = 1.5;
-  else if (waveHeightFt >= 4 && waveHeightFt < 6) hs = 2;
-  else if (waveHeightFt >= 6 && waveHeightFt < 8) hs = 2.5;
-  else if (waveHeightFt >= 8) hs = 3;
-  let ps = 0;
+
+  // --- 1. WAVE HEIGHT SCORE (0-2.5) ---
+  // Optimal range per spot, penalty for too big or too small
+  let waveScore = 0;
+  if (waveHeightFt < spot.minWave * 0.5) waveScore = 0.3;
+  else if (waveHeightFt < spot.minWave) waveScore = 0.8;
+  else if (waveHeightFt <= spot.maxWave * 0.7) waveScore = 2.5; // sweet spot
+  else if (waveHeightFt <= spot.maxWave) waveScore = 2.0;
+  else if (waveHeightFt <= spot.maxWave * 1.3) waveScore = 1.2; // getting too big
+  else waveScore = 0.5; // maxed out / closeouts
+
+  // --- 2. SWELL PERIOD SCORE (0-2) ---
+  // Exponential importance -- long period groundswell is king
+  let periodScore = 0;
   if (periodSec != null) {
-    if (periodSec >= 8 && periodSec < 10) ps = 0.5;
-    else if (periodSec >= 10 && periodSec < 13) ps = 1;
-    else if (periodSec >= 13 && periodSec < 16) ps = 1.5;
-    else if (periodSec >= 16) ps = 2;
+    if (periodSec < 6) periodScore = 0;
+    else if (periodSec < 8) periodScore = 0.3;
+    else if (periodSec < 10) periodScore = 0.7;
+    else if (periodSec < 12) periodScore = 1.0;
+    else if (periodSec < 14) periodScore = 1.3;
+    else if (periodSec < 17) periodScore = 1.7;
+    else periodScore = 2.0;
   }
-  let wp = 0;
-  if (windSpeedKts != null && windSpeedKts > 5) {
-    const onshore = windDir != null && windDir >= 180 && windDir <= 320;
-    const sideshore = windDir != null && ((windDir >= 140 && windDir < 180) || (windDir > 320 && windDir <= 360));
-    if (onshore) { wp = windSpeedKts > 15 ? -2 : windSpeedKts > 10 ? -1.5 : -0.5; }
-    else if (sideshore) { wp = windSpeedKts > 15 ? -1 : windSpeedKts > 10 ? -0.5 : 0; }
-    if (windDir != null && windDir >= 20 && windDir < 140 && windSpeedKts < 15 && waveHeightFt >= 2) wp = 0.5;
+
+  // --- 3. SWELL DIRECTION SCORE (-1 to 1) ---
+  // How well does this swell angle hit this spot?
+  let swellScore = 0;
+  if (swellDir != null) {
+    const optCenter = (spot.swellMin + spot.swellMax) / 2;
+    const optRange = (spot.swellMax - spot.swellMin) / 2;
+    const diff = angleDiff(swellDir, optCenter);
+    if (diff <= optRange * 0.5) swellScore = 1.0;       // dead on
+    else if (diff <= optRange) swellScore = 0.5;          // within window
+    else if (diff <= optRange * 1.5) swellScore = -0.2;   // marginal
+    else swellScore = -0.8;                                // wrong direction
   }
-  const t = Math.max(0, Math.min(6, Math.round(hs + ps + wp)));
-  return t === 0 && waveHeightFt >= 0.5 ? 1 : t;
+
+  // --- 4. WIND SCORE (-2 to 1) ---
+  // Relative to shore normal -- offshore is gold, onshore kills it
+  let windScore = 0;
+  if (windSpeedKts != null && windDir != null) {
+    const relAngle = angleDiff(windDir, spot.shoreNormal);
+    const isOffshore = relAngle > 120;   // wind blowing from land to sea
+    const isSideshore = relAngle > 60 && relAngle <= 120;
+    const isOnshore = relAngle <= 60;    // wind blowing from sea to land
+
+    if (windSpeedKts <= 3) {
+      windScore = 0.8; // glassy
+    } else if (windSpeedKts <= 7) {
+      if (isOffshore) windScore = 1.0;
+      else if (isSideshore) windScore = 0.3;
+      else windScore = -0.3;
+    } else if (windSpeedKts <= 12) {
+      if (isOffshore) windScore = 0.7;
+      else if (isSideshore) windScore = -0.3;
+      else windScore = -1.0;
+    } else if (windSpeedKts <= 18) {
+      if (isOffshore) windScore = 0.3; // strong offshore can be too much
+      else if (isSideshore) windScore = -0.8;
+      else windScore = -1.5;
+    } else { // 18+ kts
+      if (isOffshore) windScore = 0;
+      else windScore = -2.0; // blown out
+    }
+  }
+
+  // --- 5. TIDE SCORE (-0.5 to 0.5) ---
+  let tideScore = 0;
+  if (tideHeight != null) {
+    const optMid = (spot.optTideLow + spot.optTideHigh) / 2;
+    const optHalf = (spot.optTideHigh - spot.optTideLow) / 2;
+    const diff = Math.abs(tideHeight - optMid);
+    if (diff <= optHalf) tideScore = 0.5;              // in the zone
+    else if (diff <= optHalf * 2) tideScore = 0;       // ok
+    else tideScore = -0.5;                              // wrong tide
+
+    // Reef breaks are more tide-sensitive
+    if (spot.type === 'reef' || spot.type === 'reef_point') {
+      tideScore *= 1.5;
+    }
+  }
+
+  // --- TOTAL ---
+  // Wave: 0-2.5, Period: 0-2, Swell Dir: -1 to 1, Wind: -2 to 1, Tide: -0.75 to 0.75
+  // Raw range: roughly -3.75 to 7.25
+  // Map to 0-6 scale
+  const raw = waveScore + periodScore + swellScore + windScore + tideScore;
+  const normalized = Math.max(0, Math.min(6, Math.round((raw / 7.25) * 6)));
+  return normalized === 0 && waveHeightFt >= 0.5 ? 1 : normalized;
 }
 
 // --- Open-Meteo ---
@@ -96,6 +206,8 @@ async function fetchAllForecasts() {
     if (i + 3 < uq.length) await new Promise(r => setTimeout(r, 300));
   }
   const dm = {}; for (const r of results) dm[r.key] = r;
+  // Fetch tide data for rating
+  const tideData = await getTideData();
   const sf = SPOTS.map(s => {
     const k = `${s.lat.toFixed(2)},${s.lon.toFixed(2)}`; const d = dm[k];
     if (!d || !d.marine || !d.weather) return { ...s, forecast: null };
@@ -107,7 +219,9 @@ async function fetchAllForecasts() {
       const ph = sh || wh || 0, pp = sp || wp || 0;
       const whf = ph * 3.28084, twf = (wh || 0) * 3.28084;
       const isoTime = t.endsWith('Z') ? t : t + 'Z';
-      return { time: isoTime, timestamp: new Date(isoTime).getTime() / 1000, waveHeight: twf, swellHeight: whf, wavePeriod: pp, waveDir: wd, swellDir: sd, windSpeed: ws, windDir: wdr, windGusts: wg, rating: calculateRating(whf, pp, ws, wdr) };
+      const ts_epoch = new Date(isoTime).getTime() / 1000;
+      const tideH = getTideAtTime(tideData, ts_epoch);
+      return { time: isoTime, timestamp: ts_epoch, waveHeight: twf, swellHeight: whf, wavePeriod: pp, waveDir: wd, swellDir: sd, windSpeed: ws, windDir: wdr, windGusts: wg, rating: calculateRating(s, whf, pp, ws, wdr, sd, tideH) };
     });
     return { ...s, forecast: { hourly } };
   });
