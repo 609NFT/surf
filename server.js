@@ -66,10 +66,10 @@ let tideCache = null;
 async function getTideData() {
   if (tideCache && Date.now() - tideCache.ts < CACHE_TTL) return tideCache.data;
   try {
-    const today = new Date();
-    const end = new Date(today.getTime() + 3 * 86400000);
+    const yesterday = new Date(Date.now() - 86400000);
+    const end = new Date(Date.now() + 3 * 86400000);
     const fmt = d => d.toISOString().slice(0,10).replace(/-/g,'');
-    const res = await fetchJSON(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${fmt(today)}&end_date=${fmt(end)}&station=9410230&product=predictions&datum=MLLW&time_zone=gmt&units=english&interval=h&format=json`);
+    const res = await fetchJSON(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${fmt(yesterday)}&end_date=${fmt(end)}&station=9410230&product=predictions&datum=MLLW&time_zone=gmt&units=english&interval=h&format=json`);
     const data = (res.predictions || []).map(p => ({ timestamp: new Date(p.t + 'Z').getTime() / 1000, height: parseFloat(p.v) }));
     tideCache = { data, ts: Date.now() };
     return data;
@@ -374,12 +374,12 @@ const server = http.createServer(async (req, res) => {
     const cached = getCached(ck);
     if (cached) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(cached)); return; }
     try {
-      const today = new Date();
-      const end = new Date(today.getTime() + 3 * 86400000);
+      const yesterday = new Date(Date.now() - 86400000);
+      const end = new Date(Date.now() + 3 * 86400000);
       const fmt = d => d.toISOString().slice(0,10).replace(/-/g,'');
       const [hourlyRes, hiloRes] = await Promise.all([
-        fetchJSON(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${fmt(today)}&end_date=${fmt(end)}&station=9410230&product=predictions&datum=MLLW&time_zone=gmt&units=english&interval=h&format=json`),
-        fetchJSON(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${fmt(today)}&end_date=${fmt(end)}&station=9410230&product=predictions&datum=MLLW&time_zone=gmt&units=english&interval=hilo&format=json`)
+        fetchJSON(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${fmt(yesterday)}&end_date=${fmt(end)}&station=9410230&product=predictions&datum=MLLW&time_zone=gmt&units=english&interval=h&format=json`),
+        fetchJSON(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${fmt(yesterday)}&end_date=${fmt(end)}&station=9410230&product=predictions&datum=MLLW&time_zone=gmt&units=english&interval=hilo&format=json`)
       ]);
       const data = {
         station: '9410230',
