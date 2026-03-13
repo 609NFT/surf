@@ -1,0 +1,8 @@
+node_modules/
+.npm/
+.env
+.vibekit-env
+.openclaw/
+encinitas-surf/
+*.md
+!README.md

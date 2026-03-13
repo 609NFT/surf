@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Encinitas Surf Forecast</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js"></script>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌊</text></svg>">
+</head>
+<body>
+  <header>
+    <div class="header-content">
+      <h1><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/></svg>Encinitas Surf Forecast</h1>
+      <div id="buoy-bar" class="buoy-header hidden">
+        <div class="buoy-stats" id="buoy-stats"></div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div id="forecast-text" class="forecast-text-card"></div>
+    <div id="tide-global" class="tide-global"></div>
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>Fetching surf data...</p>
+    </div>
+    <div id="spots-grid" class="spots-grid"></div>
+  </main>
+
+  <footer>
+    <p>Data from <a href="https://www.surfline.com" target="_blank">Surfline</a> & <a href="https://www.ndbc.noaa.gov/station_page.php?station=46224" target="_blank">NDBC</a> · Auto-refreshes every 15 min</p>
+  </footer>
+
+  <script src="app.js"></script>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

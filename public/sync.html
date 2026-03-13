@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Surfline Sync</title>
+<style>
+  body { background: #000; color: #f5f5f7; font-family: -apple-system, sans-serif; padding: 2rem; max-width: 600px; margin: 0 auto; }
+  h1 { font-size: 1.2rem; font-weight: 600; margin-bottom: 1rem; }
+  .status { padding: 0.75rem; border-radius: 10px; background: rgba(255,255,255,0.05); margin: 0.5rem 0; font-size: 0.85rem; }
+  .ok { border-left: 3px solid #30d158; }
+  .err { border-left: 3px solid #ff453a; }
+  .loading { border-left: 3px solid #0a84ff; }
+  button { background: #0a84ff; color: white; border: none; padding: 0.6rem 1.5rem; border-radius: 10px; font-size: 0.9rem; cursor: pointer; font-weight: 500; }
+  button:disabled { opacity: 0.4; }
+  .bookmarklet { margin-top: 2rem; padding: 1rem; background: rgba(255,255,255,0.04); border-radius: 10px; }
+  .bookmarklet a { color: #0a84ff; font-weight: 600; text-decoration: none; padding: 0.4rem 1rem; background: rgba(10,132,255,0.15); border-radius: 8px; display: inline-block; }
+  .note { color: #86868b; font-size: 0.75rem; margin-top: 0.5rem; }
+</style>
+</head>
+<body>
+<h1>Surfline Data Sync</h1>
+<button onclick="syncNow()" id="syncBtn">Sync Now</button>
+<div id="log"></div>
+
+<div class="bookmarklet">
+  <p style="font-size:0.8rem; color:#86868b; margin-bottom:0.5rem;">Drag this to your bookmarks bar for one-click sync from any page:</p>
+  <a id="bmk" href="#">Sync Surf Data</a>
+  <p class="note">Click it once every ~15 min, or whenever you want fresh Surfline data.</p>
+</div>
+
+<script>
+const TOKEN = '';
+const SPOTS = [
+  {name:'Oceanside Harbor', id:'5842041f4e65fad6a7708832'},
+  {name:'Oceanside Pier', id:'584204204e65fad6a7709435'},
+  {name:'Tamarack', id:'5842041f4e65fad6a7708837'},
+  {name:'Terra Mar', id:'5842041f4e65fad6a77088a6'},
+  {name:'Ponto', id:'5842041f4e65fad6a77088a5'},
+  {name:'Grandview', id:'5842041f4e65fad6a770889f'},
+  {name:'Beacons', id:'5842041f4e65fad6a77088a0'},
+  {name:'D Street', id:'5842041f4e65fad6a77088b7'},
+  {name:'Swamis', id:'5842041f4e65fad6a77088b4'},
+  {name:'Pipes', id:'5c008f5313603c0001df5318'},
+  {name:'Cardiff Reef', id:'5842041f4e65fad6a77088b1'},
+  {name:'Seaside Reef', id:'5842041f4e65fad6a77088b3'},
+  {name:'Del Mar Rivermouth', id:'5842041f4e65fad6a77088b0'},
+  {name:'15th Street Del Mar', id:'5842041f4e65fad6a77088af'}
+];
+
+// Load token
+fetch('/api/sl-config').then(r=>r.json()).then(d=>{
+  window._slToken = d.t;
+  buildBookmarklet(d.t);
+});
+
+function log(msg, cls) {
+  document.getElementById('log').innerHTML += `<div class="status ${cls}">${msg}</div>`;
+}
+
+function buildBookmarklet(token) {
+  const code = `javascript:void((async()=>{const t='${token}';const s=${JSON.stringify(SPOTS.map(s=>s.id))};const d={};for(let i=0;i<s.length;i+=3){const b=s.slice(i,i+3);const r=await Promise.all(b.map(id=>fetch('https://services.surfline.com/kbyg/spots/forecasts/rating?spotId='+id+'&days=2&intervalHours=1&accesstoken='+t).then(r=>r.json()).then(j=>({id,rating:j})).catch(()=>({id,rating:null}))));r.forEach(x=>d[x.id]={rating:x.rating});await new Promise(r=>setTimeout(r,200))}const res=await fetch('https://surf.vibekit.bot/api/surfline-sync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:t,spots:d})});const j=await res.json();alert('Synced '+j.spots+' spots!');})())`;
+  document.getElementById('bmk').href = code;
+}
+
+async function syncNow() {
+  const btn = document.getElementById('syncBtn');
+  btn.disabled = true;
+  const token = window._slToken;
+  if (!token) { log('No token loaded', 'err'); btn.disabled = false; return; }
+
+  log('Fetching Surfline data for 14 spots...', 'loading');
+  const spots = {};
+
+  for (let i = 0; i < SPOTS.length; i += 3) {
+    const batch = SPOTS.slice(i, i + 3);
+    const results = await Promise.all(batch.map(async s => {
+      try {
+        const [rating, surf, wind, tides] = await Promise.all([
+          fetch(`https://services.surfline.com/kbyg/spots/forecasts/rating?spotId=${s.id}&days=2&intervalHours=1&accesstoken=${token}`).then(r=>r.json()).catch(()=>null),
+          fetch(`https://services.surfline.com/kbyg/spots/forecasts/surf?spotId=${s.id}&days=2&intervalHours=1&units%5BwaveHeight%5D=FT&accesstoken=${token}`).then(r=>r.json()).catch(()=>null),
+          fetch(`https://services.surfline.com/kbyg/spots/forecasts/wind?spotId=${s.id}&days=2&intervalHours=1&corrected=true&units%5BwindSpeed%5D=KTS&accesstoken=${token}`).then(r=>r.json()).catch(()=>null),
+          fetch(`https://services.surfline.com/kbyg/spots/forecasts/tides?spotId=${s.id}&days=3&units%5BtideHeight%5D=FT&accesstoken=${token}`).then(r=>r.json()).catch(()=>null)
+        ]);
+        return { id: s.id, name: s.name, rating, surf, wind, tides };
+      } catch (e) { return { id: s.id, name: s.name, error: e.message }; }
+    }));
+    results.forEach(r => {
+      spots[r.id] = r;
+      log(`${r.name}: ${r.error ? 'FAILED' : 'OK'}`, r.error ? 'err' : 'ok');
+    });
+    if (i + 3 < SPOTS.length) await new Promise(r => setTimeout(r, 300));
+  }
+
+  log('Pushing to server...', 'loading');
+  try {
+    const res = await fetch('/api/surfline-sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, spots })
+    });
+    const j = await res.json();
+    log(`Synced ${j.spots} spots to server!`, 'ok');
+  } catch (e) {
+    log(`Push failed: ${e.message}`, 'err');
+  }
+  btn.disabled = false;
+}
+</script>
+</body>
+</html>

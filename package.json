@@ -1,0 +1,12 @@
+{
+  "name": "encinitas-surf",
+  "version": "1.0.0",
+  "description": "Surf forecast for Encinitas and nearby beaches",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "wrangler": "^4.72.0"
+  }
+}
