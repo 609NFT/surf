@@ -318,6 +318,49 @@ async function fetchBuoyData() {
   } catch (e) { return null; }
 }
 
+// --- Dive visibility estimator ---
+// Visibility in SoCal kelp/reef diving is driven by surge/swell and current
+// Swell > 4ft = bad viz, calm + low current = great viz
+function estimateViz(waveHtFt, swellHtFt, currentVelMs) {
+  // Base viz from swell — primary factor
+  let baseViz;
+  const swell = Math.max(waveHtFt, swellHtFt);
+  if (swell < 0.5) baseViz = 40;
+  else if (swell < 1.0) baseViz = 30;
+  else if (swell < 1.5) baseViz = 20;
+  else if (swell < 2.5) baseViz = 15;
+  else if (swell < 3.5) baseViz = 10;
+  else if (swell < 5.0) baseViz = 5;
+  else baseViz = 3;
+
+  // Current penalty (m/s — 0.5 m/s is already strong)
+  const currentKts = currentVelMs * 1.944;
+  let currentPenalty = 0;
+  if (currentKts > 0.5) currentPenalty = 5;
+  if (currentKts > 1.0) currentPenalty = 10;
+  if (currentKts > 1.5) currentPenalty = 15;
+
+  const vizFt = Math.max(3, baseViz - currentPenalty);
+
+  let label, diveRating, diveLabel;
+  if (vizFt >= 30) { label = 'Excellent'; diveRating = 5; diveLabel = 'Excellent'; }
+  else if (vizFt >= 20) { label = 'Good'; diveRating = 4; diveLabel = 'Good'; }
+  else if (vizFt >= 12) { label = 'Fair'; diveRating = 3; diveLabel = 'Fair'; }
+  else if (vizFt >= 7) { label = 'Poor'; diveRating = 2; diveLabel = 'Poor'; }
+  else { label = 'Very Poor'; diveRating = 1; diveLabel = 'Very Poor'; }
+
+  return { vizFt, label, diveRating, diveLabel };
+}
+
+function wetsuitRec(tempF) {
+  if (!tempF || isNaN(tempF)) return null;
+  if (tempF >= 72) return '3mm or shorty';
+  if (tempF >= 67) return '3mm fullsuit';
+  if (tempF >= 62) return '5mm fullsuit';
+  if (tempF >= 58) return '7mm + hood';
+  return '7mm drysuit recommended';
+}
+
 // --- MIME types ---
 const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml' };
 
@@ -453,6 +496,134 @@ const server = http.createServer(async (req, res) => {
   if (pathname === '/api/spots') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(SPOTS));
+    return;
+  }
+
+  if (pathname === '/api/dive') {
+    const ck = 'dive:conditions'; const cd = getCached(ck);
+    if (cd) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(cd)); return; }
+    try {
+      // Dive spots along N San Diego coast — reefs and kelp beds
+      const DIVE_SPOTS = [
+        { name: 'La Jolla Cove', lat: 32.850, lon: -117.271, type: 'cove', desc: 'Calm, protected cove. Garibaldi, leopard sharks, sea lions.' },
+        { name: 'La Jolla Shores', lat: 32.858, lon: -117.256, type: 'beach', desc: 'Easy entry. Sandy bottom with rays and halibut. Good for beginners.' },
+        { name: 'Swamis Reef', lat: 33.034, lon: -117.296, type: 'reef', desc: 'Rocky reef with kelp. Sheephead, cabezon, lobster at night.' },
+        { name: 'Cardiff Reef', lat: 33.015, lon: -117.283, type: 'reef', desc: 'Submerged reef. Varied sea life, lobster, kelp.' },
+        { name: 'Seaside Reef', lat: 33.002, lon: -117.280, type: 'reef', desc: 'Shallow to mid-depth reef diving. Good macro life.' },
+        { name: 'Oceanside Harbor', lat: 33.204, lon: -117.396, type: 'harbor', desc: 'Protected harbor diving. Sea bass, corvina, kelp forest nearby.' }
+      ];
+
+      // Fetch buoy + marine data for primary dive coords (La Jolla)
+      const [buoy, marineRes] = await Promise.all([
+        fetchBuoyData(),
+        fetchJSON('https://marine-api.open-meteo.com/v1/marine?latitude=32.85&longitude=-117.27&hourly=wave_height,wave_period,swell_wave_height,swell_wave_period,swell_wave_direction,ocean_current_velocity,ocean_current_direction&timezone=GMT&forecast_days=3').catch(() => null)
+      ]);
+
+      const now = Date.now() / 1000;
+
+      // Get current hour index from marine data
+      let currentMarine = null;
+      if (marineRes && marineRes.hourly && marineRes.hourly.time) {
+        const times = marineRes.hourly.time;
+        let bestIdx = 0;
+        for (let i = 0; i < times.length; i++) {
+          const t = new Date(times[i] + 'Z').getTime() / 1000;
+          if (Math.abs(t - now) < Math.abs(new Date(times[bestIdx] + 'Z').getTime() / 1000 - now)) bestIdx = i;
+        }
+        const h = marineRes.hourly;
+        currentMarine = {
+          waveHeight: h.wave_height?.[bestIdx],
+          wavePeriod: h.wave_period?.[bestIdx],
+          swellHeight: h.swell_wave_height?.[bestIdx],
+          swellPeriod: h.swell_wave_period?.[bestIdx],
+          swellDir: h.swell_wave_direction?.[bestIdx],
+          currentVelocity: h.ocean_current_velocity?.[bestIdx],
+          currentDir: h.ocean_current_direction?.[bestIdx],
+          time: times[bestIdx]
+        };
+      }
+
+      // Build 48h timeline for visibility chart
+      let timeline = [];
+      if (marineRes && marineRes.hourly && marineRes.hourly.time) {
+        const h = marineRes.hourly;
+        const endTs = now + 48 * 3600;
+        h.time.forEach((t, i) => {
+          const ts = new Date(t + 'Z').getTime() / 1000;
+          if (ts < now - 1800 || ts > endTs) return;
+          const waveHt = (h.wave_height?.[i] || 0) * 3.28084; // m to ft
+          const swellHt = (h.swell_wave_height?.[i] || 0) * 3.28084;
+          const currentVel = h.ocean_current_velocity?.[i] || 0; // m/s
+          const viz = estimateViz(waveHt, swellHt, currentVel);
+          timeline.push({
+            time: t + 'Z',
+            timestamp: ts,
+            waveHeightFt: waveHt,
+            swellHeightFt: swellHt,
+            swellDir: h.swell_wave_direction?.[i],
+            currentVelocityMs: currentVel,
+            currentDir: h.ocean_current_direction?.[i],
+            vizFt: viz.vizFt,
+            vizLabel: viz.label,
+            diveRating: viz.diveRating
+          });
+        });
+      }
+
+      // Compute viz + dive ratings for each spot based on their exposure
+      const spots = DIVE_SPOTS.map(s => {
+        const swellHtFt = currentMarine ? (currentMarine.swellHeight || currentMarine.waveHeight || 0) * 3.28084 : 0;
+        const waveHtFt = currentMarine ? (currentMarine.waveHeight || 0) * 3.28084 : 0;
+        const currentVel = currentMarine ? (currentMarine.currentVelocity || 0) : 0;
+
+        // Cove gets swell shadow; reef/beach more exposed
+        let exposureMult = 1.0;
+        if (s.type === 'cove') exposureMult = 0.4;
+        else if (s.type === 'harbor') exposureMult = 0.2;
+        else if (s.type === 'beach') exposureMult = 0.9;
+
+        const adjSwell = swellHtFt * exposureMult;
+        const adjWave = waveHtFt * exposureMult;
+        const viz = estimateViz(adjWave, adjSwell, currentVel);
+
+        return {
+          ...s,
+          current: {
+            waveHeightFt: parseFloat(adjWave.toFixed(1)),
+            swellHeightFt: parseFloat(adjSwell.toFixed(1)),
+            swellDir: currentMarine?.swellDir,
+            currentVelocityMs: parseFloat((currentVel * exposureMult).toFixed(2)),
+            currentDir: currentMarine?.currentDir,
+            vizFt: viz.vizFt,
+            vizLabel: viz.label,
+            diveRating: viz.diveRating,
+            diveLabel: viz.diveLabel
+          }
+        };
+      });
+
+      const result = {
+        timestamp: new Date().toISOString(),
+        waterTempF: buoy ? parseFloat(buoy.waterTemp) : null,
+        wetsuitRec: buoy ? wetsuitRec(parseFloat(buoy.waterTemp)) : null,
+        buoy: buoy ? {
+          waveHeightFt: buoy.waveHeight ? parseFloat(buoy.waveHeight) : null,
+          dominantPeriod: buoy.dominantPeriod,
+          waveDir: buoy.waveDirection,
+          windSpeed: buoy.windSpeed,
+          windDir: buoy.windDir
+        } : null,
+        spots,
+        timeline
+      };
+
+      setCache(ck, result);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(result));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
     return;
   }
   if (pathname === '/api/sl-config') {
