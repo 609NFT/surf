@@ -441,7 +441,7 @@
   }
 
   // --- Cam carousel navigation ---
-  document.addEventListener('click', function(e) {
+  document.addEventListener('click', async function(e) {
     const arrow = e.target.closest('.cam-arrow');
     if (arrow) {
       e.stopPropagation();
@@ -480,7 +480,7 @@
   });
 
   // --- Live stream player ---
-  document.addEventListener('click', function(e) {
+  document.addEventListener('click', async function(e) {
     const playBtn = e.target.closest('.cam-play');
     if (!playBtn) return;
     e.stopPropagation();
@@ -512,7 +512,8 @@
     video.controls = true;
 
     // Append auth token to stream URL
-    const authedStream = streamUrl + (streamUrl.includes('?') ? '&' : '?') + 'accesstoken=' + (slToken || '');
+    const token = await getSLToken();
+    const authedStream = streamUrl + (streamUrl.includes('?') ? '&' : '?') + 'accesstoken=' + (token || '');
 
     // Safari/iOS: native HLS support (no CORS issues)
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
@@ -818,29 +819,40 @@
         return;
       }
 
+      // Show poster + play button overlay; attach HLS only on click (autoplay blocked without gesture)
       container.innerHTML = `
-        <div class="scripps-cam-wrap">
-          <video id="scripps-video" class="scripps-video" autoplay muted playsinline controls poster="${data.thumbnail}"></video>
+        <div class="scripps-cam-wrap" id="scripps-cam-wrap">
+          <img class="scripps-poster" src="${data.thumbnail}" alt="Scripps Pier Underwater">
+          <div class="scripps-play-overlay" id="scripps-play-btn">
+            <div class="scripps-play-icon">&#9654;</div>
+            <div class="scripps-play-text">Watch Live</div>
+          </div>
           <div class="scripps-cam-label">Scripps Pier Underwater — Live</div>
         </div>`;
 
-      const video = document.getElementById('scripps-video');
+      document.getElementById('scripps-play-btn').addEventListener('click', function() {
+        const wrap = document.getElementById('scripps-cam-wrap');
+        wrap.innerHTML = `<video id="scripps-video" class="scripps-video" playsinline controls></video><div class="scripps-cam-label">Scripps Pier Underwater — Live</div>`;
+        const video = document.getElementById('scripps-video');
 
-      if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        // Safari native HLS
-        video.src = data.streamUrl;
-      } else if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-        const hls = new Hls({ maxBufferLength: 15 });
-        hls.loadSource(data.streamUrl);
-        hls.attachMedia(video);
-        hls.on(Hls.Events.ERROR, (event, d) => {
-          if (d.fatal) {
-            container.innerHTML = `<div class="scripps-cam-error">Stream error — <a href="https://hdontap.com/stream/018408/scripps-pier-underwater-live-webcam/" target="_blank">watch on HDOnTap</a></div>`;
-          }
-        });
-      } else {
-        container.innerHTML = `<div class="scripps-cam-error">HLS not supported — <a href="https://hdontap.com/stream/018408/scripps-pier-underwater-live-webcam/" target="_blank">watch on HDOnTap</a></div>`;
-      }
+        const onError = () => {
+          container.innerHTML = `<div class="scripps-cam-error">Stream error — <a href="https://hdontap.com/stream/018408/scripps-pier-underwater-live-webcam/" target="_blank">watch on HDOnTap</a></div>`;
+        };
+
+        if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          video.src = data.streamUrl;
+          video.play().catch(onError);
+        } else if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+          const hls = new Hls({ maxBufferLength: 15 });
+          hls.loadSource(data.streamUrl);
+          hls.attachMedia(video);
+          hls.on(Hls.Events.MANIFEST_PARSED, () => { video.play().catch(() => {}); });
+          hls.on(Hls.Events.ERROR, (event, d) => { if (d.fatal) onError(); });
+        } else {
+          onError();
+        }
+      });
+
     } catch (e) {
       container.innerHTML = `<div class="scripps-cam-error">Live cam unavailable — <a href="https://hdontap.com/stream/018408/scripps-pier-underwater-live-webcam/" target="_blank">watch on HDOnTap</a></div>`;
     }

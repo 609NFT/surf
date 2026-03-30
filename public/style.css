@@ -1022,3 +1022,56 @@ footer a:hover { color: var(--accent); }
   color: var(--accent);
   text-decoration: none;
 }
+
+/* Scripps cam play overlay */
+.scripps-poster {
+  width: 100%;
+  display: block;
+  aspect-ratio: 16/9;
+  object-fit: cover;
+}
+
+.scripps-play-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  background: rgba(0,0,0,0.35);
+  transition: background 0.2s;
+}
+
+.scripps-play-overlay:hover {
+  background: rgba(0,0,0,0.5);
+}
+
+.scripps-play-icon {
+  width: 56px;
+  height: 56px;
+  background: rgba(255,255,255,0.9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  color: #000;
+  padding-left: 4px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+  transition: transform 0.15s, background 0.15s;
+}
+
+.scripps-play-overlay:hover .scripps-play-icon {
+  transform: scale(1.1);
+  background: #fff;
+}
+
+.scripps-play-text {
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+}
