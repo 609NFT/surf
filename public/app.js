@@ -922,19 +922,11 @@
 
       const conditionsBar = `
         <div class="dive-conditions-bar">
-          <div class="dive-cond-item">
-            <span class="dive-cond-label">Water Temp</span>
-            <span class="dive-cond-value">${tempStr}</span>
-          </div>
           ${vizFt != null ? `
           <div class="dive-cond-item">
             <span class="dive-cond-label">Visibility <span style="font-size:0.6rem;opacity:0.6">${vizSource}</span></span>
             <span class="dive-cond-value" style="color:${vizColor}">${vizFt} ft <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary)">${vizLabel}</span></span>
           </div>` : ''}
-          <div class="dive-cond-item">
-            <span class="dive-cond-label">Wetsuit</span>
-            <span class="dive-cond-value">${wetsuitStr}</span>
-          </div>
           ${data.buoy && data.buoy.waveHeightFt ? `
           <div class="dive-cond-item">
             <span class="dive-cond-label">Offshore Swell</span>
