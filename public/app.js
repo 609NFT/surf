@@ -883,12 +883,23 @@
       const tempStr = data.waterTempF ? `${data.waterTempF}°F` : '—';
       const wetsuitStr = data.wetsuitRec || '—';
 
+      // Viz from La Jolla Cove (closest to Scripps cam)
+      const lajolla = (data.spots || []).find(s => s.name === 'La Jolla Cove');
+      const vizFt = lajolla ? lajolla.current.vizFt : null;
+      const vizLabel = lajolla ? lajolla.current.vizLabel : null;
+      const vizColor = lajolla ? diveRatingColor(lajolla.current.diveRating) : '#888';
+
       const conditionsBar = `
         <div class="dive-conditions-bar">
           <div class="dive-cond-item">
             <span class="dive-cond-label">Water Temp</span>
             <span class="dive-cond-value">${tempStr}</span>
           </div>
+          ${vizFt != null ? `
+          <div class="dive-cond-item">
+            <span class="dive-cond-label">Est. Visibility</span>
+            <span class="dive-cond-value" style="color:${vizColor}">${vizFt} ft <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary)">${vizLabel}</span></span>
+          </div>` : ''}
           <div class="dive-cond-item">
             <span class="dive-cond-label">Wetsuit</span>
             <span class="dive-cond-value">${wetsuitStr}</span>
@@ -905,18 +916,7 @@
         .map(renderDiveSpotCard).join('');
 
       const timelineHtml = renderDiveTimeline(data.timeline);
-
-      // Viz from La Jolla Cove (closest to Scripps cam)
-      const lajolla = (data.spots || []).find(s => s.name === 'La Jolla Cove');
-      const vizFt = lajolla ? lajolla.current.vizFt : null;
-      const vizLabel = lajolla ? lajolla.current.vizLabel : null;
-      const vizColor = lajolla ? diveRatingColor(lajolla.current.diveRating) : '#888';
-      const vizHtml = vizFt != null ? `
-        <div class="cam-viz-strip">
-          <span class="cam-viz-label">Est. Visibility</span>
-          <span class="cam-viz-value" style="color:${vizColor}">${vizFt} ft</span>
-          <span class="cam-viz-sublabel">${vizLabel}</span>
-        </div>` : '';
+      const vizHtml = '';
 
       contentEl.innerHTML = `<div id="scripps-cam-container" class="scripps-cam-container"><div class="scripps-cam-loading"><div class="spinner"></div><p>Loading live cam...</p></div></div>${vizHtml}` + conditionsBar + timelineHtml + `<div class="dive-spots-grid">${spotsHtml}</div>`;
       if (window.lucide) lucide.createIcons();
