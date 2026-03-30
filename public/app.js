@@ -924,17 +924,25 @@
       contentEl.innerHTML = `<div id="scripps-cam-container" class="scripps-cam-container"><div class="scripps-cam-loading"><div class="spinner"></div><p>Loading live cam...</p></div></div>${vizHtml}` + conditionsBar + timelineHtml + `<div class="dive-spots-grid">${spotsHtml}</div>`;
       if (window.lucide) lucide.createIcons();
       loadScrippsCam();
-      // Kick off camera viz analysis in background; reload dive data when done
-      fetch('/api/scripps-viz').then(r => r.json()).then(viz => {
-        if (viz && viz.vizFt && !data.cameraViz) {
-          // Re-render with camera viz
-          data.cameraViz = viz;
+      // Kick off camera viz analysis in background; update just the viz display when done
+      if (!data.cameraViz) {
+        fetch('/api/scripps-viz').then(r => r.json()).then(viz => {
+          if (!viz || !viz.vizFt) return;
           const vizColor2 = diveRatingColor(viz.diveRating);
-          const el = document.querySelector('.dive-cond-item .dive-cond-label');
-          // Just reload the whole dive data to get fresh render
-          loadDiveData();
-        }
-      }).catch(() => {});
+          // Update viz label and value in-place without reloading
+          const vizLabels = document.querySelectorAll('.dive-cond-item .dive-cond-label');
+          vizLabels.forEach(el => {
+            if (el.textContent.includes('Visibility')) {
+              const valEl = el.closest('.dive-cond-item').querySelector('.dive-cond-value');
+              if (valEl) {
+                valEl.style.color = vizColor2;
+                valEl.innerHTML = `${viz.vizFt} ft <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary)">${viz.label}</span>`;
+              }
+              el.innerHTML = `Visibility <span style="font-size:0.6rem;opacity:0.6">camera</span>`;
+            }
+          });
+        }).catch(() => {});
+      }
 
     } catch (e) {
       contentEl.innerHTML = '<p style="text-align:center;color:var(--gray);padding:2rem;">Failed to load dive data.</p>';
