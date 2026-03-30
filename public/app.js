@@ -782,36 +782,59 @@
       </div>`;
   }
 
-  function renderDiveTimeline(timeline) {
+  function renderDiveTimeline(timeline, cameraViz) {
     if (!timeline || timeline.length === 0) return '';
 
-    // Trim to 24h
     const now = Date.now() / 1000;
     const t24 = timeline.filter(t => t.timestamp >= now - 1800 && t.timestamp <= now + 24 * 3600);
     if (t24.length === 0) return '';
 
-    const ratings = t24.map(t => t.diveRating);
-    const colors = ratings.map(r => diveRatingColor(r));
+    // Find current hour swell as baseline
+    const currentEntry = t24.reduce((best, t) => Math.abs(t.timestamp - now) < Math.abs(best.timestamp - now) ? t : best, t24[0]);
+    const baseSwell = Math.max(currentEntry.swellHeightFt || 0.1, 0.1);
+
+    // Anchor to camera viz if available, else use physics estimate for current hour
+    const baseVizFt = cameraViz ? cameraViz.vizFt : (currentEntry.vizFt || 15);
+
+    // Scale each hour's viz relative to current swell
+    // viz scales inversely with swell: viz_t = baseViz * (baseSwell / swell_t)^0.7
+    // exponent < 1 softens the curve (swell doubling doesn't halve viz instantly)
+    const scaled = t24.map(t => {
+      const swell = Math.max(t.swellHeightFt || 0.1, 0.1);
+      const scaledViz = Math.round(baseVizFt * Math.pow(baseSwell / swell, 0.7));
+      const clampedViz = Math.max(3, Math.min(40, scaledViz));
+      // Map viz to dive rating
+      let diveRating;
+      if (clampedViz >= 30) diveRating = 5;
+      else if (clampedViz >= 20) diveRating = 4;
+      else if (clampedViz >= 12) diveRating = 3;
+      else if (clampedViz >= 7)  diveRating = 2;
+      else                       diveRating = 1;
+      return { ...t, projectedVizFt: clampedViz, projectedRating: diveRating };
+    });
+
+    const colors = scaled.map(t => diveRatingColor(t.projectedRating));
     const stops = colors.map((c, i) => `${c} ${((i / (colors.length - 1)) * 100).toFixed(1)}%`).join(', ');
     const gradient = `linear-gradient(to right, ${stops})`;
 
-    const timeLabels = t24.map((t, i) => {
+    const timeLabels = scaled.map((t, i) => {
       const d = new Date(t.time);
       const hr = parseInt(d.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hour12: false }));
       if (hr % 6 !== 0) return '';
-      const pct = (i / (t24.length - 1)) * 100;
-      const label = formatHour(t.time);
-      return `<span class="tl-time-abs" style="left:${pct.toFixed(1)}%">${label}</span>`;
+      const pct = (i / (scaled.length - 1)) * 100;
+      return `<span class="tl-time-abs" style="left:${pct.toFixed(1)}%">${formatHour(t.time)}</span>`;
     }).join('');
 
-    const hoverSegs = t24.map(t => {
+    const hoverSegs = scaled.map(t => {
       const time = formatHour(t.time);
-      return `<div class="tl-hover-seg" data-tip="${time}: swell ${t.swellHeightFt ? t.swellHeightFt.toFixed(1)+'ft' : '—'}"></div>`;
+      return `<div class="tl-hover-seg" data-tip="${time}: ~${t.projectedVizFt} ft viz"></div>`;
     }).join('');
+
+    const sourceNote = cameraViz ? 'camera-anchored' : 'est';
 
     return `
       <div class="dive-timeline-wrap">
-        <div class="timeline-label">Swell forecast (24h) <span style="font-size:0.6rem;opacity:0.5;font-weight:400">conditions only</span></div>
+        <div class="timeline-label">Visibility forecast (24h) <span style="font-size:0.6rem;opacity:0.5;font-weight:400">${sourceNote}</span></div>
         <div class="forecast-timeline-blend">
           <div class="tl-gradient" style="background:${gradient}"></div>
           <div class="tl-hover-layer">${hoverSegs}</div>
@@ -923,20 +946,19 @@
         .sort((a, b) => b.current.diveRating - a.current.diveRating)
         .map(renderDiveSpotCard).join('');
 
-      const timelineHtml = renderDiveTimeline(data.timeline);
+      const timelineHtml = renderDiveTimeline(data.timeline, camViz);
       const vizHtml = '';
 
       contentEl.innerHTML = `<div id="scripps-cam-container" class="scripps-cam-container"><div class="scripps-cam-loading"><div class="spinner"></div><p>Loading live cam...</p></div></div>${vizHtml}` + conditionsBar + timelineHtml + `<div class="dive-spots-grid">${spotsHtml}</div>`;
       if (window.lucide) lucide.createIcons();
       loadScrippsCam();
-      // Kick off camera viz analysis in background; update just the viz display when done
+      // Kick off camera viz analysis in background; update viz display + re-render timeline when done
       if (!data.cameraViz) {
         fetch('/api/scripps-viz').then(r => r.json()).then(viz => {
           if (!viz || !viz.vizFt) return;
+          // Update conditions bar in-place
           const vizColor2 = diveRatingColor(viz.diveRating);
-          // Update viz label and value in-place without reloading
-          const vizLabels = document.querySelectorAll('.dive-cond-item .dive-cond-label');
-          vizLabels.forEach(el => {
+          document.querySelectorAll('.dive-cond-item .dive-cond-label').forEach(el => {
             if (el.textContent.includes('Visibility')) {
               const valEl = el.closest('.dive-cond-item').querySelector('.dive-cond-value');
               if (valEl) {
@@ -946,6 +968,9 @@
               el.innerHTML = `Visibility <span style="font-size:0.6rem;opacity:0.6">camera</span>`;
             }
           });
+          // Re-render timeline anchored to camera reading
+          const tlWrap = document.querySelector('.dive-timeline-wrap');
+          if (tlWrap) tlWrap.outerHTML = renderDiveTimeline(data.timeline, viz);
         }).catch(() => {});
       }
 
