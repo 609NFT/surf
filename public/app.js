@@ -830,11 +830,11 @@
       return `<div class="tl-hover-seg" data-tip="${time}: ~${t.projectedVizFt} ft viz"></div>`;
     }).join('');
 
-    const sourceNote = cameraViz ? 'camera-anchored' : 'est';
+    
 
     return `
       <div class="dive-timeline-wrap">
-        <div class="timeline-label">Visibility forecast (24h) <span style="font-size:0.6rem;opacity:0.5;font-weight:400">${sourceNote}</span></div>
+        <div class="timeline-label">Visibility forecast (24h)</div>
         <div class="forecast-timeline-blend">
           <div class="tl-gradient" style="background:${gradient}"></div>
           <div class="tl-hover-layer">${hoverSegs}</div>
@@ -918,13 +918,13 @@
       const vizLabel = camViz ? camViz.label : (lajolla ? lajolla.current.vizLabel : null);
       const vizRating = camViz ? camViz.diveRating : (lajolla ? lajolla.current.diveRating : 0);
       const vizColor = diveRatingColor(vizRating);
-      const vizSource = camViz ? 'camera' : 'est';
+
 
       const conditionsBar = `
         <div class="dive-conditions-bar">
           ${vizFt != null ? `
           <div class="dive-cond-item">
-            <span class="dive-cond-label">Visibility <span style="font-size:0.6rem;opacity:0.6">${vizSource}</span></span>
+            <span class="dive-cond-label">Visibility</span>
             <span class="dive-cond-value" style="color:${vizColor}">${vizFt} ft <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary)">${vizLabel}</span></span>
           </div>` : ''}
           ${data.buoy && data.buoy.waveHeightFt ? `
@@ -957,7 +957,7 @@
                 valEl.style.color = vizColor2;
                 valEl.innerHTML = `${viz.vizFt} ft <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary)">${viz.label}</span>`;
               }
-              el.innerHTML = `Visibility <span style="font-size:0.6rem;opacity:0.6">camera</span>`;
+              el.innerHTML = "Visibility";
             }
           });
           // Re-render timeline anchored to camera reading
