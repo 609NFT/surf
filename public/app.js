@@ -906,7 +906,19 @@
 
       const timelineHtml = renderDiveTimeline(data.timeline);
 
-      contentEl.innerHTML = `<div id="scripps-cam-container" class="scripps-cam-container"><div class="scripps-cam-loading"><div class="spinner"></div><p>Loading live cam...</p></div></div>` + conditionsBar + timelineHtml + `<div class="dive-spots-grid">${spotsHtml}</div>`;
+      // Viz from La Jolla Cove (closest to Scripps cam)
+      const lajolla = (data.spots || []).find(s => s.name === 'La Jolla Cove');
+      const vizFt = lajolla ? lajolla.current.vizFt : null;
+      const vizLabel = lajolla ? lajolla.current.vizLabel : null;
+      const vizColor = lajolla ? diveRatingColor(lajolla.current.diveRating) : '#888';
+      const vizHtml = vizFt != null ? `
+        <div class="cam-viz-strip">
+          <span class="cam-viz-label">Est. Visibility</span>
+          <span class="cam-viz-value" style="color:${vizColor}">${vizFt} ft</span>
+          <span class="cam-viz-sublabel">${vizLabel}</span>
+        </div>` : '';
+
+      contentEl.innerHTML = `<div id="scripps-cam-container" class="scripps-cam-container"><div class="scripps-cam-loading"><div class="spinner"></div><p>Loading live cam...</p></div></div>${vizHtml}` + conditionsBar + timelineHtml + `<div class="dive-spots-grid">${spotsHtml}</div>`;
       if (window.lucide) lucide.createIcons();
       loadScrippsCam();
 

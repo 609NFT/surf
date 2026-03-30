@@ -1125,3 +1125,33 @@ footer a:hover { color: var(--accent); }
   stroke-width: 0.8;
   stroke-dasharray: 3 3;
 }
+
+.cam-viz-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 1rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  margin-bottom: 1rem;
+  margin-top: -1px;
+}
+
+.cam-viz-label {
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.cam-viz-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.cam-viz-sublabel {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
