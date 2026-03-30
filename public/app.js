@@ -827,12 +827,12 @@
             <div class="scripps-play-icon">&#9654;</div>
             <div class="scripps-play-text">Watch Live</div>
           </div>
-          <div class="scripps-cam-label">Scripps Pier Underwater — Live</div>
+          
         </div>`;
 
       document.getElementById('scripps-play-btn').addEventListener('click', function() {
         const wrap = document.getElementById('scripps-cam-wrap');
-        wrap.innerHTML = `<video id="scripps-video" class="scripps-video" playsinline controls></video><div class="scripps-cam-label">Scripps Pier Underwater — Live</div>`;
+        wrap.innerHTML = `<video id="scripps-video" class="scripps-video" playsinline controls></video>`;
         const video = document.getElementById('scripps-video');
 
         const onError = () => {
