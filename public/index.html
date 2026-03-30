@@ -16,17 +16,39 @@
       <div id="buoy-bar" class="buoy-header hidden">
         <div class="buoy-stats" id="buoy-stats"></div>
       </div>
+      <nav class="tab-nav">
+        <button class="tab-btn active" data-tab="surf">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tab-icon"><path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/></svg>
+          Surf
+        </button>
+        <button class="tab-btn" data-tab="dive">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tab-icon"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/><path d="M7 3.34A10 10 0 0 1 12 2a10 10 0 0 1 9.95 9"/><path d="M2.05 11A10 10 0 0 0 12 22"/></svg>
+          Dive
+        </button>
+      </nav>
     </div>
   </header>
 
   <main>
-    <div id="forecast-text" class="forecast-text-card"></div>
-    <div id="tide-global" class="tide-global"></div>
-    <div id="loading" class="loading">
-      <div class="spinner"></div>
-      <p>Fetching surf data...</p>
+    <!-- Surf Tab -->
+    <div id="tab-surf" class="tab-panel active">
+      <div id="forecast-text" class="forecast-text-card"></div>
+      <div id="tide-global" class="tide-global"></div>
+      <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p>Fetching surf data...</p>
+      </div>
+      <div id="spots-grid" class="spots-grid"></div>
     </div>
-    <div id="spots-grid" class="spots-grid"></div>
+
+    <!-- Dive Tab -->
+    <div id="tab-dive" class="tab-panel hidden">
+      <div id="dive-loading" class="loading">
+        <div class="spinner"></div>
+        <p>Fetching dive conditions...</p>
+      </div>
+      <div id="dive-content"></div>
+    </div>
   </main>
 
   <footer>

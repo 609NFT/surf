@@ -696,6 +696,162 @@
     }
   });
 
+  // --- Tab switching ---
+  let diveLoaded = false;
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+      document.querySelectorAll('.tab-panel').forEach(p => {
+        p.classList.toggle('active', p.id === 'tab-' + tab);
+        p.classList.toggle('hidden', p.id !== 'tab-' + tab);
+      });
+      if (tab === 'dive' && !diveLoaded) {
+        diveLoaded = true;
+        loadDiveData();
+      }
+    });
+  });
+
+  // --- Dive helpers ---
+  function diveRatingColor(rating) {
+    const colors = ['#1c1c1e', '#ff453a', '#ff9f0a', '#ffd60a', '#a8d844', '#30d158'];
+    return colors[Math.max(0, Math.min(5, rating))] || '#1c1c1e';
+  }
+
+  function diveRatingClass(rating) {
+    const cls = ['flat', 'very-poor', 'poor', 'poor-to-fair', 'fair', 'good'];
+    return cls[Math.max(0, Math.min(5, rating))] || 'flat';
+  }
+
+  function currentStrength(ms) {
+    if (ms == null) return '—';
+    const kts = ms * 1.944;
+    if (kts < 0.1) return 'Slack';
+    if (kts < 0.3) return 'Light';
+    if (kts < 0.7) return 'Moderate';
+    if (kts < 1.2) return 'Strong';
+    return 'Very Strong';
+  }
+
+  function renderDiveSpotCard(spot) {
+    const c = spot.current;
+    const ratingClass = diveRatingClass(c.diveRating);
+    const ratingColor = diveRatingColor(c.diveRating);
+
+    const swellStr = c.swellHeightFt != null
+      ? `${c.swellHeightFt.toFixed(1)} ft ${c.swellDir != null ? degToCompass(c.swellDir) : ''}`
+      : '—';
+
+    const currentStr = currentStrength(c.currentVelocityMs);
+    const currentDirStr = c.currentDir != null ? ` ${degToCompass(c.currentDir)}` : '';
+
+    const vizBarWidth = Math.min(100, Math.round((c.vizFt / 40) * 100));
+
+    return `
+      <div class="dive-spot-card">
+        <div class="dive-card-header">
+          <div class="dive-spot-name">${spot.name}</div>
+          <span class="rating-badge rating-${ratingClass}">${c.diveLabel}</span>
+        </div>
+        <div class="dive-spot-desc">${spot.desc}</div>
+        <div class="dive-stats">
+          <div class="dive-stat">
+            <span class="dive-stat-label">Visibility</span>
+            <span class="dive-stat-value">${c.vizFt} ft</span>
+            <div class="viz-bar-track"><div class="viz-bar-fill" style="width:${vizBarWidth}%;background:${ratingColor}"></div></div>
+          </div>
+          <div class="dive-stat">
+            <span class="dive-stat-label">Swell</span>
+            <span class="dive-stat-value">${swellStr}</span>
+          </div>
+          <div class="dive-stat">
+            <span class="dive-stat-label">Current</span>
+            <span class="dive-stat-value">${currentStr}${currentDirStr}</span>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function renderDiveTimeline(timeline) {
+    if (!timeline || timeline.length === 0) return '';
+
+    const ratings = timeline.map(t => t.diveRating);
+    const colors = ratings.map(r => diveRatingColor(r));
+    const stops = colors.map((c, i) => `${c} ${((i / (colors.length - 1)) * 100).toFixed(1)}%`).join(', ');
+    const gradient = `linear-gradient(to right, ${stops})`;
+
+    const timeLabels = timeline.map((t, i) => {
+      const d = new Date(t.time);
+      const hr = parseInt(d.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hour12: false }));
+      if (hr % 6 !== 0) return '';
+      const pct = (i / (timeline.length - 1)) * 100;
+      const label = formatHour(t.time);
+      return `<span class="tl-time-abs" style="left:${pct.toFixed(1)}%">${label}</span>`;
+    }).join('');
+
+    const hoverSegs = timeline.map(t => {
+      const time = formatHour(t.time);
+      return `<div class="tl-hover-seg" data-tip="${time}: ${t.vizLabel} viz (~${t.vizFt}ft)"></div>`;
+    }).join('');
+
+    return `
+      <div class="dive-timeline-wrap">
+        <div class="timeline-label">Visibility forecast (48h)</div>
+        <div class="forecast-timeline-blend">
+          <div class="tl-gradient" style="background:${gradient}"></div>
+          <div class="tl-hover-layer">${hoverSegs}</div>
+          <div class="tl-time-layer">${timeLabels}</div>
+        </div>
+      </div>`;
+  }
+
+  async function loadDiveData() {
+    const loadingEl = document.getElementById('dive-loading');
+    const contentEl = document.getElementById('dive-content');
+    loadingEl.classList.remove('hidden');
+    contentEl.innerHTML = '';
+
+    try {
+      const data = await fetch('/api/dive').then(r => r.json());
+
+      const tempStr = data.waterTempF ? `${data.waterTempF}°F` : '—';
+      const wetsuitStr = data.wetsuitRec || '—';
+
+      const conditionsBar = `
+        <div class="dive-conditions-bar">
+          <div class="dive-cond-item">
+            <span class="dive-cond-label">Water Temp</span>
+            <span class="dive-cond-value">${tempStr}</span>
+          </div>
+          <div class="dive-cond-item">
+            <span class="dive-cond-label">Wetsuit</span>
+            <span class="dive-cond-value">${wetsuitStr}</span>
+          </div>
+          ${data.buoy && data.buoy.waveHeightFt ? `
+          <div class="dive-cond-item">
+            <span class="dive-cond-label">Offshore Swell</span>
+            <span class="dive-cond-value">${data.buoy.waveHeightFt} ft @ ${data.buoy.dominantPeriod || '—'}s</span>
+          </div>` : ''}
+        </div>`;
+
+      const spotsHtml = (data.spots || [])
+        .sort((a, b) => b.current.diveRating - a.current.diveRating)
+        .map(renderDiveSpotCard).join('');
+
+      const timelineHtml = renderDiveTimeline(data.timeline);
+
+      contentEl.innerHTML = conditionsBar + timelineHtml + `<div class="dive-spots-grid">${spotsHtml}</div>`;
+      if (window.lucide) lucide.createIcons();
+
+    } catch (e) {
+      contentEl.innerHTML = '<p style="text-align:center;color:var(--gray);padding:2rem;">Failed to load dive data.</p>';
+    } finally {
+      loadingEl.classList.add('hidden');
+    }
+  }
+
   // --- Init ---
   loadData().then(() => { loadSurflineData(); loadTides(); loadSurflineOverlay(); loadForecastText(); });
   setInterval(loadData, REFRESH_INTERVAL);
