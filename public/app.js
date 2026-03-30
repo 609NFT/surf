@@ -785,28 +785,33 @@
   function renderDiveTimeline(timeline) {
     if (!timeline || timeline.length === 0) return '';
 
-    const ratings = timeline.map(t => t.diveRating);
+    // Trim to 24h
+    const now = Date.now() / 1000;
+    const t24 = timeline.filter(t => t.timestamp >= now - 1800 && t.timestamp <= now + 24 * 3600);
+    if (t24.length === 0) return '';
+
+    const ratings = t24.map(t => t.diveRating);
     const colors = ratings.map(r => diveRatingColor(r));
     const stops = colors.map((c, i) => `${c} ${((i / (colors.length - 1)) * 100).toFixed(1)}%`).join(', ');
     const gradient = `linear-gradient(to right, ${stops})`;
 
-    const timeLabels = timeline.map((t, i) => {
+    const timeLabels = t24.map((t, i) => {
       const d = new Date(t.time);
       const hr = parseInt(d.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hour12: false }));
       if (hr % 6 !== 0) return '';
-      const pct = (i / (timeline.length - 1)) * 100;
+      const pct = (i / (t24.length - 1)) * 100;
       const label = formatHour(t.time);
       return `<span class="tl-time-abs" style="left:${pct.toFixed(1)}%">${label}</span>`;
     }).join('');
 
-    const hoverSegs = timeline.map(t => {
+    const hoverSegs = t24.map(t => {
       const time = formatHour(t.time);
-      return `<div class="tl-hover-seg" data-tip="${time}: ${t.vizLabel} viz (~${t.vizFt}ft)"></div>`;
+      return `<div class="tl-hover-seg" data-tip="${time}: swell ${t.swellHeightFt ? t.swellHeightFt.toFixed(1)+'ft' : '—'}"></div>`;
     }).join('');
 
     return `
       <div class="dive-timeline-wrap">
-        <div class="timeline-label">Visibility forecast (48h)</div>
+        <div class="timeline-label">Swell forecast (24h) <span style="font-size:0.6rem;opacity:0.5;font-weight:400">conditions only</span></div>
         <div class="forecast-timeline-blend">
           <div class="tl-gradient" style="background:${gradient}"></div>
           <div class="tl-hover-layer">${hoverSegs}</div>
