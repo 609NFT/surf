@@ -591,10 +591,17 @@
       const nowX = (nowPct / 100) * w;
 
       // Hover elements: invisible rect + cursor line + dot + tooltip
+      // Zero (sea level) line — only if 0ft falls within the visible range
+      const zeroY = pad + (1 - (0 - minH) / range) * (h - pad * 2);
+      const zeroLineHtml = (minH <= 0 && 0 <= minH + range)
+        ? `<line x1="0" y1="${zeroY.toFixed(1)}" x2="${w}" y2="${zeroY.toFixed(1)}" class="tide-zero-line"/>`
+        : '';
+
       const svg = `<svg viewBox="0 0 ${w} ${h}" class="tide-svg" preserveAspectRatio="none"
                         data-w="${w}" data-h="${h}" data-pad="${pad}" data-min="${minH}" data-range="${range}" data-count="${hourly.length}">
         <path d="${fillD}" class="tide-fill"/>
         <path d="${pathD}" class="tide-line"/>
+        ${zeroLineHtml}
         <line x1="${nowX}" y1="0" x2="${nowX}" y2="${h}" class="tide-now-line"/>
 
         <line class="tide-hover-line" x1="0" y1="0" x2="0" y2="${h}" style="display:none"/>
