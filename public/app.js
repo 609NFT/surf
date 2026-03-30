@@ -820,9 +820,24 @@
       }
 
       // Autoplay muted (browsers allow muted autoplay; user can unmute via controls)
+      // Piling overlay positions (% of video width/height)
+      const PILINGS = [
+        { id: 'p1', label: '4 ft',  x: 88, y: 52, dist: '1.2m' },
+        { id: 'p2', label: '11 ft', x: 68, y: 38, dist: '3.4m' },
+        { id: 'p3', label: '14 ft', x: 32, y: 35, dist: '4.3m' },
+        { id: 'p4', label: '30 ft', x: 14, y: 28, dist: '9m'   }
+      ];
+
+      const pilingHtml = PILINGS.map(p => `
+        <div class="piling-label" id="${p.id}" style="left:${p.x}%;top:${p.y}%">
+          <div class="piling-dot"></div>
+          <div class="piling-tag">${p.label}</div>
+        </div>`).join('');
+
       container.innerHTML = `
         <div class="scripps-cam-wrap" id="scripps-cam-wrap">
           <video id="scripps-video" class="scripps-video" playsinline controls muted></video>
+          <div class="piling-overlay" id="piling-overlay">${pilingHtml}</div>
         </div>`;
 
       const video = document.getElementById('scripps-video');

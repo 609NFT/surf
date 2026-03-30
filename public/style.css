@@ -1075,3 +1075,47 @@ footer a:hover { color: var(--accent); }
   letter-spacing: 0.05em;
   text-shadow: 0 1px 4px rgba(0,0,0,0.6);
 }
+
+/* ===== PILING DISTANCE OVERLAYS ===== */
+.scripps-cam-wrap {
+  position: relative;
+}
+
+.piling-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* push labels above the native video controls bar (~10% from bottom) */
+}
+
+.piling-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  pointer-events: none;
+}
+
+.piling-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 220, 50, 0.95);
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.5), 0 0 8px rgba(255,220,50,0.6);
+  flex-shrink: 0;
+}
+
+.piling-tag {
+  background: rgba(0, 0, 0, 0.65);
+  color: #ffe84d;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255,220,50,0.3);
+}
