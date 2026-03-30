@@ -963,3 +963,62 @@ footer a:hover { color: var(--accent); }
   border-radius: 2px;
   transition: width 0.3s ease;
 }
+
+/* ===== SCRIPPS CAM ===== */
+.scripps-cam-container {
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+  position: relative;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scripps-cam-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  padding: 2rem;
+}
+
+.scripps-cam-wrap {
+  width: 100%;
+  position: relative;
+}
+
+.scripps-video {
+  width: 100%;
+  display: block;
+  aspect-ratio: 16/9;
+  background: #000;
+}
+
+.scripps-cam-label {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(transparent, rgba(0,0,0,0.7));
+  color: #fff;
+  font-size: 0.7rem;
+  padding: 1rem 0.75rem 0.5rem;
+  letter-spacing: 0.03em;
+}
+
+.scripps-cam-error {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.scripps-cam-error a {
+  color: var(--accent);
+  text-decoration: none;
+}

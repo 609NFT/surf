@@ -47,10 +47,11 @@ function getCached(key) { const e = cache.get(key); if (e && Date.now() - e.ts <
 function setCache(key, data) { cache.set(key, { data, ts: Date.now() }); }
 
 // --- HTTP fetch ---
-function fetchUrl(u) {
+function fetchUrl(u, opts = {}) {
   return new Promise((resolve, reject) => {
     const mod = u.startsWith('https') ? https : http;
-    const req = mod.get(u, { headers: { 'User-Agent': 'EncinitasSurf/1.0' } }, (res) => {
+    const headers = Object.assign({ 'User-Agent': 'EncinitasSurf/1.0' }, opts.headers || {});
+    const req = mod.get(u, { headers }, (res) => {
       if (res.statusCode < 200 || res.statusCode >= 300) { res.resume(); return reject(new Error(`HTTP ${res.statusCode}`)); }
       let body = ''; res.on('data', c => body += c); res.on('end', () => resolve(body));
     });
@@ -496,6 +497,45 @@ const server = http.createServer(async (req, res) => {
   if (pathname === '/api/spots') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(SPOTS));
+    return;
+  }
+
+  if (pathname === '/api/scripps-cam') {
+    // Fetch a fresh HLS token from HDOnTap backend (token valid ~12hrs)
+    const ck = 'scripps-cam:token';
+    const cached = getCached(ck);
+    if (cached) {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify(cached));
+      return;
+    }
+    try {
+      const STREAM_ID = 'scripps_pier-underwater-HDOT';
+      const REFERRER = Buffer.from('https://hdontap.com/stream/018408/scripps-pier-underwater-live-webcam/').toString('base64');
+      const raw = await fetchUrl(`https://portal.hdontap.com/backend/embed/${STREAM_ID}?r=${REFERRER}`, {
+        headers: {
+          'Referer': 'https://hdontap.com/stream/018408/scripps-pier-underwater-live-webcam/',
+          'Origin': 'https://hdontap.com',
+          'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+      });
+      const data = JSON.parse(Buffer.from(raw, 'base64').toString('utf8'));
+      const streamUrl = data.streamSrc;
+      if (!streamUrl) throw new Error('No streamSrc in response');
+      // Parse expiry from URL
+      const expMatch = streamUrl.match(/[?&]e=(\d+)/);
+      const expiry = expMatch ? parseInt(expMatch[1]) : 0;
+      // Cache until 1hr before expiry
+      const ttl = expiry ? Math.max(0, (expiry - 3600) * 1000 - Date.now()) : 30 * 60 * 1000;
+      const result = { streamUrl, expiry, thumbnail: 'https://storage.hdontap.com/wowza_stream_thumbnails/snapshot_hosb6lo_scripps_pier-underwater.stream_Jqu1gTq.jpg' };
+      // Store with custom TTL
+      cache.set(ck, { data: result, ts: Date.now() - CACHE_TTL + ttl });
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify(result));
+    } catch (e) {
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
     return;
   }
 

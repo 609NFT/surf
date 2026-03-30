@@ -807,6 +807,45 @@
       </div>`;
   }
 
+  // --- Scripps cam ---
+  async function loadScrippsCam() {
+    const container = document.getElementById('scripps-cam-container');
+    if (!container) return;
+    try {
+      const data = await fetch('/api/scripps-cam').then(r => r.json());
+      if (data.error || !data.streamUrl) {
+        container.innerHTML = `<div class="scripps-cam-error">Live cam unavailable — <a href="https://hdontap.com/stream/018408/scripps-pier-underwater-live-webcam/" target="_blank">watch on HDOnTap</a></div>`;
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="scripps-cam-wrap">
+          <video id="scripps-video" class="scripps-video" autoplay muted playsinline controls poster="${data.thumbnail}"></video>
+          <div class="scripps-cam-label">Scripps Pier Underwater — Live</div>
+        </div>`;
+
+      const video = document.getElementById('scripps-video');
+
+      if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Safari native HLS
+        video.src = data.streamUrl;
+      } else if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+        const hls = new Hls({ maxBufferLength: 15 });
+        hls.loadSource(data.streamUrl);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.ERROR, (event, d) => {
+          if (d.fatal) {
+            container.innerHTML = `<div class="scripps-cam-error">Stream error — <a href="https://hdontap.com/stream/018408/scripps-pier-underwater-live-webcam/" target="_blank">watch on HDOnTap</a></div>`;
+          }
+        });
+      } else {
+        container.innerHTML = `<div class="scripps-cam-error">HLS not supported — <a href="https://hdontap.com/stream/018408/scripps-pier-underwater-live-webcam/" target="_blank">watch on HDOnTap</a></div>`;
+      }
+    } catch (e) {
+      container.innerHTML = `<div class="scripps-cam-error">Live cam unavailable — <a href="https://hdontap.com/stream/018408/scripps-pier-underwater-live-webcam/" target="_blank">watch on HDOnTap</a></div>`;
+    }
+  }
+
   async function loadDiveData() {
     const loadingEl = document.getElementById('dive-loading');
     const contentEl = document.getElementById('dive-content');
@@ -842,8 +881,9 @@
 
       const timelineHtml = renderDiveTimeline(data.timeline);
 
-      contentEl.innerHTML = conditionsBar + timelineHtml + `<div class="dive-spots-grid">${spotsHtml}</div>`;
+      contentEl.innerHTML = `<div id="scripps-cam-container" class="scripps-cam-container"><div class="scripps-cam-loading"><div class="spinner"></div><p>Loading live cam...</p></div></div>` + conditionsBar + timelineHtml + `<div class="dive-spots-grid">${spotsHtml}</div>`;
       if (window.lucide) lucide.createIcons();
+      loadScrippsCam();
 
     } catch (e) {
       contentEl.innerHTML = '<p style="text-align:center;color:var(--gray);padding:2rem;">Failed to load dive data.</p>';
