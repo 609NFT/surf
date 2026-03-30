@@ -883,11 +883,14 @@
       const tempStr = data.waterTempF ? `${data.waterTempF}°F` : '—';
       const wetsuitStr = data.wetsuitRec || '—';
 
-      // Viz from La Jolla Cove (closest to Scripps cam)
+      // Viz: prefer camera analysis, fall back to physics estimate
+      const camViz = data.cameraViz;
       const lajolla = (data.spots || []).find(s => s.name === 'La Jolla Cove');
-      const vizFt = lajolla ? lajolla.current.vizFt : null;
-      const vizLabel = lajolla ? lajolla.current.vizLabel : null;
-      const vizColor = lajolla ? diveRatingColor(lajolla.current.diveRating) : '#888';
+      const vizFt = camViz ? camViz.vizFt : (lajolla ? lajolla.current.vizFt : null);
+      const vizLabel = camViz ? camViz.label : (lajolla ? lajolla.current.vizLabel : null);
+      const vizRating = camViz ? camViz.diveRating : (lajolla ? lajolla.current.diveRating : 0);
+      const vizColor = diveRatingColor(vizRating);
+      const vizSource = camViz ? 'camera' : 'est';
 
       const conditionsBar = `
         <div class="dive-conditions-bar">
@@ -897,7 +900,7 @@
           </div>
           ${vizFt != null ? `
           <div class="dive-cond-item">
-            <span class="dive-cond-label">Est. Visibility</span>
+            <span class="dive-cond-label">Visibility <span style="font-size:0.6rem;opacity:0.6">${vizSource}</span></span>
             <span class="dive-cond-value" style="color:${vizColor}">${vizFt} ft <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary)">${vizLabel}</span></span>
           </div>` : ''}
           <div class="dive-cond-item">
@@ -921,6 +924,17 @@
       contentEl.innerHTML = `<div id="scripps-cam-container" class="scripps-cam-container"><div class="scripps-cam-loading"><div class="spinner"></div><p>Loading live cam...</p></div></div>${vizHtml}` + conditionsBar + timelineHtml + `<div class="dive-spots-grid">${spotsHtml}</div>`;
       if (window.lucide) lucide.createIcons();
       loadScrippsCam();
+      // Kick off camera viz analysis in background; reload dive data when done
+      fetch('/api/scripps-viz').then(r => r.json()).then(viz => {
+        if (viz && viz.vizFt && !data.cameraViz) {
+          // Re-render with camera viz
+          data.cameraViz = viz;
+          const vizColor2 = diveRatingColor(viz.diveRating);
+          const el = document.querySelector('.dive-cond-item .dive-cond-label');
+          // Just reload the whole dive data to get fresh render
+          loadDiveData();
+        }
+      }).catch(() => {});
 
     } catch (e) {
       contentEl.innerHTML = '<p style="text-align:center;color:var(--gray);padding:2rem;">Failed to load dive data.</p>';

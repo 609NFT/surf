@@ -53,10 +53,15 @@ function fetchUrl(u, opts = {}) {
     const headers = Object.assign({ 'User-Agent': 'EncinitasSurf/1.0' }, opts.headers || {});
     const req = mod.get(u, { headers }, (res) => {
       if (res.statusCode < 200 || res.statusCode >= 300) { res.resume(); return reject(new Error(`HTTP ${res.statusCode}`)); }
-      let body = ''; res.on('data', c => body += c); res.on('end', () => resolve(body));
+      const chunks = [];
+      res.on('data', c => chunks.push(typeof c === 'string' ? Buffer.from(c) : c));
+      res.on('end', () => {
+        const buf = Buffer.concat(chunks);
+        resolve(opts.binary ? buf : buf.toString('utf8'));
+      });
     });
     req.on('error', reject);
-    req.setTimeout(15000, () => { req.destroy(); reject(new Error('timeout')); });
+    req.setTimeout(20000, () => { req.destroy(); reject(new Error('timeout')); });
   });
 }
 async function fetchJSON(u) { return JSON.parse(await fetchUrl(u)); }
@@ -319,6 +324,76 @@ async function fetchBuoyData() {
   } catch (e) { return null; }
 }
 
+// --- Scripps cam viz analyzer ---
+// Fetches a live frame from the HLS stream and analyzes water color to estimate viz
+const { execFile } = require('child_process');
+const os = require('os');
+
+async function analyzeScrippsViz(streamUrl) {
+  return new Promise(async (resolve) => {
+    try {
+      // Get chunklist from master playlist
+      const master = await fetchUrl(streamUrl);
+      const chunkMatch = master.match(/https?:\/\/[^\s]+chunklist[^\s]+/);
+      if (!chunkMatch) return resolve(null);
+
+      // Get a TS segment URL
+      const chunklist = await fetchUrl(chunkMatch[0]);
+      const tsMatch = chunklist.match(/https?:\/\/[^\s]+\.ts[^\s]*/);
+      if (!tsMatch) return resolve(null);
+
+      const tsUrl = tsMatch[0];
+      const tmpTs = `${os.tmpdir()}/scripps_${Date.now()}.ts`;
+      const tmpJpg = `${os.tmpdir()}/scripps_${Date.now()}.jpg`;
+      const tmpPx = `${os.tmpdir()}/scripps_${Date.now()}.raw`;
+
+      // Download TS segment (binary)
+      const tsData = await fetchUrl(tsUrl, { binary: true }).catch(() => null);
+      if (!tsData) return resolve(null);
+      require('fs').writeFileSync(tmpTs, tsData);
+
+      // Extract first frame
+      await new Promise((res, rej) => {
+        execFile('ffmpeg', ['-i', tmpTs, '-frames:v', '1', '-q:v', '2', tmpJpg, '-y'],
+          { timeout: 15000 }, (err) => err ? rej(err) : res());
+      });
+
+      // Sample water region (35-50% x, 15-35% y) — clear of pilings
+      // Frame is 1920x1080: crop 288x216 at x=672,y=162
+      await new Promise((res, rej) => {
+        execFile('ffmpeg', [
+          '-i', tmpJpg,
+          '-vf', 'crop=288:216:672:162,scale=1:1',
+          '-pix_fmt', 'rgb24', '-f', 'rawvideo', tmpPx, '-y'
+        ], { timeout: 10000 }, (err) => err ? rej(err) : res());
+      });
+
+      const px = require('fs').readFileSync(tmpPx);
+      const r = px[0], g = px[1], b = px[2];
+      const total = r + g + b + 0.001;
+      const blueDom = b / total;
+      const sat = (Math.max(r,g,b) - Math.min(r,g,b)) / (Math.max(r,g,b) + 0.001);
+      const clarity = blueDom * sat;
+
+      // Map clarity score to viz estimate
+      let vizFt, label, diveRating, diveLabel;
+      if (clarity > 0.45)      { vizFt = 30; label = 'Excellent'; diveRating = 5; diveLabel = 'Excellent'; }
+      else if (clarity > 0.38) { vizFt = 20; label = 'Good';      diveRating = 4; diveLabel = 'Good'; }
+      else if (clarity > 0.28) { vizFt = 12; label = 'Fair';      diveRating = 3; diveLabel = 'Fair'; }
+      else if (clarity > 0.18) { vizFt = 7;  label = 'Poor';      diveRating = 2; diveLabel = 'Poor'; }
+      else                     { vizFt = 3;  label = 'Very Poor';  diveRating = 1; diveLabel = 'Very Poor'; }
+
+      // Cleanup
+      for (const f of [tmpTs, tmpJpg, tmpPx]) { try { require('fs').unlinkSync(f); } catch(e){} }
+
+      resolve({ vizFt, label, diveRating, diveLabel, clarity: parseFloat(clarity.toFixed(3)), rgb: {r,g,b}, source: 'camera' });
+    } catch(e) {
+      console.error('Scripps viz analysis failed:', e.message);
+      resolve(null);
+    }
+  });
+}
+
 // --- Dive visibility estimator ---
 // Visibility in SoCal kelp/reef diving is driven by surge/swell and current
 // Swell > 4ft = bad viz, calm + low current = great viz
@@ -500,6 +575,33 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (pathname === '/api/scripps-viz') {
+    // Camera-based viz analysis — cache 10 min (updates every segment ~10s but analysis is expensive)
+    const ck = 'scripps:viz';
+    const cd = getCached(ck);
+    if (cd) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(cd)); return; }
+    try {
+      // Get fresh stream URL
+      const STREAM_ID = 'scripps_pier-underwater-HDOT';
+      const REFERRER = Buffer.from('https://hdontap.com/stream/018408/scripps-pier-underwater-live-webcam/').toString('base64');
+      const raw = await fetchUrl(`https://portal.hdontap.com/backend/embed/${STREAM_ID}?r=${REFERRER}`, {
+        headers: { 'Referer': 'https://hdontap.com/', 'Origin': 'https://hdontap.com', 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
+      });
+      const streamData = JSON.parse(Buffer.from(raw, 'base64').toString('utf8'));
+      const viz = await analyzeScrippsViz(streamData.streamSrc);
+      if (!viz) throw new Error('Analysis failed');
+      const result = { ...viz, timestamp: new Date().toISOString() };
+      // Cache for 10 min
+      cache.set(ck, { data: result, ts: Date.now() - CACHE_TTL + 10 * 60 * 1000 });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(result));
+    } catch(e) {
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+
   if (pathname === '/api/scripps-cam') {
     // Fetch a fresh HLS token from HDOnTap backend (token valid ~12hrs)
     const ck = 'scripps-cam:token';
@@ -642,10 +744,18 @@ const server = http.createServer(async (req, res) => {
         };
       });
 
+      // Try to get camera-based viz (cached, non-blocking)
+      let cameraViz = null;
+      try {
+        const cv = getCached('scripps:viz');
+        if (cv) cameraViz = cv;
+      } catch(e) {}
+
       const result = {
         timestamp: new Date().toISOString(),
         waterTempF: buoy ? parseFloat(buoy.waterTemp) : null,
         wetsuitRec: buoy ? wetsuitRec(parseFloat(buoy.waterTemp)) : null,
+        cameraViz,
         buoy: buoy ? {
           waveHeightFt: buoy.waveHeight ? parseFloat(buoy.waveHeight) : null,
           dominantPeriod: buoy.dominantPeriod,
