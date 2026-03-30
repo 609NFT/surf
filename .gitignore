@@ -7,3 +7,4 @@ encinitas-surf/
 *.md
 !README.md
 .git-credential-helper.sh
+bin/
