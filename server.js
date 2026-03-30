@@ -328,6 +328,11 @@ async function fetchBuoyData() {
 // Fetches a live frame from the HLS stream and analyzes water color to estimate viz
 const { execFile } = require('child_process');
 const os = require('os');
+const FFMPEG = (() => {
+  const local = require('path').join(__dirname, 'bin', 'ffmpeg');
+  try { require('fs').accessSync(local, require('fs').constants.X_OK); return local; } catch(e) {}
+  return 'ffmpeg'; // fallback to PATH
+})();
 
 async function analyzeScrippsViz(streamUrl) {
   return new Promise(async (resolve) => {
@@ -354,21 +359,18 @@ async function analyzeScrippsViz(streamUrl) {
 
       // Extract first frame
       await new Promise((res, rej) => {
-        execFile('ffmpeg', ['-i', tmpTs, '-frames:v', '1', '-q:v', '2', tmpJpg, '-y'],
+        execFile(FFMPEG, ['-i', tmpTs, '-frames:v', '1', '-q:v', '2', tmpJpg, '-y'],
           { timeout: 15000 }, (err) => err ? rej(err) : res());
       });
 
-      // Sample water region (35-50% x, 15-35% y) — clear of pilings
-      // Frame is 1920x1080: crop 288x216 at x=672,y=162
-      await new Promise((res, rej) => {
-        execFile('ffmpeg', [
-          '-i', tmpJpg,
-          '-vf', 'crop=288:216:672:162,scale=1:1',
-          '-pix_fmt', 'rgb24', '-f', 'rawvideo', tmpPx, '-y'
-        ], { timeout: 10000 }, (err) => err ? rej(err) : res());
-      });
-
-      const px = require('fs').readFileSync(tmpPx);
+      // Use sharp to sample water region (35-50% x, 15-35% y) — clear of pilings
+      // Frame is 1920x1080: crop w=288,h=216 at left=672,top=162, then average to 1x1
+      const sharp = require('sharp');
+      const { data: px } = await sharp(tmpJpg)
+        .extract({ left: 672, top: 162, width: 288, height: 216 })
+        .resize(1, 1)
+        .raw()
+        .toBuffer({ resolveWithObject: true });
       const r = px[0], g = px[1], b = px[2];
       const total = r + g + b + 0.001;
       const blueDom = b / total;
