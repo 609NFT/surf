@@ -146,7 +146,7 @@
 
   async function loadForecastText() {
     try {
-      const r = await fetch('/api/forecast-text', { signal: AbortSignal.timeout(8000) });
+      const r = await fetch('/api/forecast-text', { signal: (() => { const c = new AbortController(); setTimeout(() => c.abort(), 8000); return c.signal; })() });
       const d = await r.json();
       if (!d.headline) return;
       const el = document.getElementById('forecast-text');
@@ -561,7 +561,7 @@
 
   async function loadTides() {
     try {
-      const res = await fetch('/api/tides', { signal: AbortSignal.timeout(10000) });
+      const res = await fetch('/api/tides', { signal: (() => { const c = new AbortController(); setTimeout(() => c.abort(), 10000); return c.signal; })() });
       const data = await res.json();
       if (!data.hourly || !data.hilo) return;
 
@@ -861,7 +861,7 @@
     const container = document.getElementById('scripps-cam-container');
     if (!container) return;
     try {
-      const data = await fetch('/api/scripps-cam', { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+      const data = await fetch('/api/scripps-cam', { signal: (() => { const c = new AbortController(); setTimeout(() => c.abort(), 10000); return c.signal; })() }).then(r => r.json());
       if (data.error || !data.streamUrl) {
         container.innerHTML = `<div class="scripps-cam-error">Live cam unavailable — <a href="https://hdontap.com/stream/018408/scripps-pier-underwater-live-webcam/" target="_blank">watch on HDOnTap</a></div>`;
         return;
@@ -919,7 +919,7 @@
     contentEl.innerHTML = '';
 
     try {
-      const data = await fetch('/api/dive', { signal: AbortSignal.timeout(15000) }).then(r => r.json());
+      const data = await fetch('/api/dive', { signal: (() => { const c = new AbortController(); setTimeout(() => c.abort(), 15000); return c.signal; })() }).then(r => r.json());
 
       const tempStr = data.waterTempF ? `${data.waterTempF}°F` : '—';
       const wetsuitStr = data.wetsuitRec || '—';
