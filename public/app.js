@@ -945,16 +945,21 @@
             <span class="dive-cond-label">Offshore Swell</span>
             <span class="dive-cond-value">${data.buoy.waveHeightFt} ft @ ${data.buoy.dominantPeriod || '—'}s</span>
           </div>` : ''}
+          ${data.current ? (() => {
+            const kts = (data.current.velocityMs * 1.944).toFixed(1);
+            const dir = data.current.dirDeg != null ? degToCompass(data.current.dirDeg) : '';
+            const strength = data.current.velocityMs < 0.1 ? 'Slack' : data.current.velocityMs < 0.3 ? 'Light' : data.current.velocityMs < 0.7 ? 'Moderate' : data.current.velocityMs < 1.2 ? 'Strong' : 'Very Strong';
+            return `<div class="dive-cond-item">
+              <span class="dive-cond-label">Current</span>
+              <span class="dive-cond-value">${strength}${dir ? ' ' + dir : ''} <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary)">${kts} kts</span></span>
+            </div>`;
+          })() : ''}
         </div>`;
-
-      const spotsHtml = (data.spots || [])
-        .sort((a, b) => b.current.diveRating - a.current.diveRating)
-        .map(renderDiveSpotCard).join('');
 
       const timelineHtml = renderDiveTimeline(data.timeline, camViz);
       const vizHtml = '';
 
-      contentEl.innerHTML = `<div id="scripps-cam-container" class="scripps-cam-container"><div class="scripps-cam-loading"><div class="spinner"></div><p>Loading live cam...</p></div></div>${vizHtml}` + conditionsBar + timelineHtml + `<div class="dive-spots-grid">${spotsHtml}</div>`;
+      contentEl.innerHTML = `<div id="scripps-cam-container" class="scripps-cam-container"><div class="scripps-cam-loading"><div class="spinner"></div><p>Loading live cam...</p></div></div>${vizHtml}` + conditionsBar + timelineHtml;
       if (window.lucide) lucide.createIcons();
       loadScrippsCam();
       // Kick off camera viz analysis in background; update viz display + re-render timeline when done

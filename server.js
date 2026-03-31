@@ -771,6 +771,10 @@ const server = http.createServer(async (req, res) => {
         waterTempF: buoy ? parseFloat(buoy.waterTemp) : null,
         wetsuitRec: buoy ? wetsuitRec(parseFloat(buoy.waterTemp)) : null,
         cameraViz,
+        current: currentMarine ? {
+          velocityMs: currentMarine.currentVelocity || 0,
+          dirDeg: currentMarine.currentDir
+        } : null,
         buoy: buoy ? {
           waveHeightFt: buoy.waveHeight ? parseFloat(buoy.waveHeight) : null,
           dominantPeriod: buoy.dominantPeriod,
