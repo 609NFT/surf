@@ -459,15 +459,6 @@ function estimateViz(waveHtFt, swellHtFt, currentVelMs) {
   return { vizFt, label, diveRating, diveLabel };
 }
 
-function wetsuitRec(tempF) {
-  if (!tempF || isNaN(tempF)) return null;
-  if (tempF >= 72) return '3mm or shorty';
-  if (tempF >= 67) return '3mm fullsuit';
-  if (tempF >= 62) return '5mm fullsuit';
-  if (tempF >= 58) return '7mm + hood';
-  return '7mm drysuit recommended';
-}
-
 // --- MIME types ---
 const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml' };
 
@@ -559,36 +550,7 @@ const server = http.createServer(async (req, res) => {
     }
     return;
   }
-  // Surfline data sync endpoint - receives data from bookmarklet
-  if (pathname === '/api/surfline-sync' && req.method === 'POST') {
-    let body = '';
-    req.on('data', c => body += c);
-    req.on('end', () => {
-      try {
-        const data = JSON.parse(body);
-        if (data.token !== SURFLINE_TOKEN) { res.writeHead(403); res.end('Forbidden'); return; }
-        setCache('surfline:data', data.spots);
-        console.log(`Surfline sync: received data for ${Object.keys(data.spots).length} spots`);
-        res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ ok: true, spots: Object.keys(data.spots).length }));
-      } catch (e) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Invalid data' }));
-      }
-    });
-    return;
-  }
-  if (pathname === '/api/surfline-sync' && req.method === 'OPTIONS') {
-    res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST', 'Access-Control-Allow-Headers': 'Content-Type' });
-    res.end();
-    return;
-  }
-  if (pathname === '/api/surfline-data') {
-    const data = getCached('surfline:data');
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(data ? { synced: true, spots: data } : { synced: false }));
-    return;
-  }
+
   if (pathname === '/api/forecast-text') {
     const ck = 'forecast-text'; const cd = getCached(ck);
     if (cd) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(cd)); return; }
@@ -798,7 +760,6 @@ const server = http.createServer(async (req, res) => {
       const result = {
         timestamp: new Date().toISOString(),
         waterTempF: buoy ? parseFloat(buoy.waterTemp) : null,
-        wetsuitRec: buoy ? wetsuitRec(parseFloat(buoy.waterTemp)) : null,
         cameraViz,
         current: currentMarine ? {
           velocityMs: currentMarine.currentVelocity || 0,
@@ -824,12 +785,6 @@ const server = http.createServer(async (req, res) => {
     }
     return;
   }
-  if (pathname === '/api/sl-config') {
-    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-    res.end(JSON.stringify({ t: SURFLINE_TOKEN }));
-    return;
-  }
-
   // Static files
   let filePath = path.join(__dirname, 'public', pathname === '/' ? 'index.html' : pathname);
   const ext = path.extname(filePath);

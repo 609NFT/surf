@@ -140,10 +140,6 @@
     return `https://camstills.cdn-surfline.com/us-west-2/${alias}/latest_full.jpg`;
   }
 
-  function getCamPixelatedUrl(alias) {
-    return `https://camstills.cdn-surfline.com/${alias}/latest_small_pixelated.png`;
-  }
-
   async function loadForecastText() {
     try {
       const r = await fetch('/api/forecast-text', { signal: (() => { const c = new AbortController(); setTimeout(() => c.abort(), 8000); return c.signal; })() });
@@ -157,20 +153,7 @@
     } catch (e) { /* no forecast text */ }
   }
 
-  // Check for synced Surfline data and overlay it
-  async function loadSurflineOverlay() {
-    try {
-      const r = await fetch('/api/surfline-data');
-      const d = await r.json();
-      if (!d.synced || !d.spots) return;
 
-      // Update rating badges with Surfline's actual ratings
-      const SL_LABELS = { FLAT: 'FLAT', VERY_POOR: 'VERY POOR', POOR: 'POOR', POOR_TO_FAIR: 'POOR TO FAIR', FAIR: 'FAIR', FAIR_TO_GOOD: 'FAIR TO GOOD', GOOD: 'GOOD', GOOD_TO_EPIC: 'EPIC', EPIC: 'EPIC' };
-      const SL_TO_NUM = { FLAT: 0, VERY_POOR: 1, POOR: 2, POOR_TO_FAIR: 3, FAIR: 4, FAIR_TO_GOOD: 5, GOOD: 6, GOOD_TO_EPIC: 6, EPIC: 6 };
-
-      console.log('Surfline overlay: data for', Object.keys(d.spots).length, 'spots');
-    } catch (e) { /* no surfline data, that's fine */ }
-  }
 
   function degToCompass(deg) {
     if (deg == null || isNaN(deg)) return '—';
@@ -426,8 +409,7 @@
         const still = getCamStillUrl(cam.alias);
         return `<div class="cam-slide ${idx === 0 ? 'active' : ''}" data-index="${idx}" data-stream="${cam.stream}">
           <img src="${still}" alt="${cam.title}" class="cam-still" loading="lazy" referrerpolicy="no-referrer"
-               data-fallback="${getCamPixelatedUrl(cam.alias)}"
-               onerror="if(!this.dataset.tried){this.dataset.tried='1';this.src=this.dataset.fallback}else{this.closest('.cam-slide').remove();var c=this.closest('.cam-carousel');if(c&&!c.querySelector('.cam-slide'))c.parentElement.style.display='none'}">
+               onerror="this.closest('.cam-slide').remove();var c=this.closest('.cam-carousel');if(c&&!c.querySelector('.cam-slide'))c.parentElement.style.display='none'">
           <div class="cam-title">${cam.title}</div>
           ${cam.stream ? '<div class="cam-play"><i data-lucide="play" class="play-icon"></i></div>' : ''}
         </div>`;
@@ -590,8 +572,6 @@
 
 
 
-      const labels = '';
-
       // Now marker position
       const nowPct = Math.max(0, Math.min(100, ((now - hourly[0].timestamp) / (hourly[hourly.length - 1].timestamp - hourly[0].timestamp)) * 100));
       const nowX = (nowPct / 100) * w;
@@ -750,60 +730,6 @@
     return colors[Math.max(0, Math.min(5, rating))] || '#1c1c1e';
   }
 
-  function diveRatingClass(rating) {
-    const cls = ['flat', 'very-poor', 'poor', 'poor-to-fair', 'fair', 'good'];
-    return cls[Math.max(0, Math.min(5, rating))] || 'flat';
-  }
-
-  function currentStrength(ms) {
-    if (ms == null) return '—';
-    const kts = ms * 1.944;
-    if (kts < 0.1) return 'Slack';
-    if (kts < 0.3) return 'Light';
-    if (kts < 0.7) return 'Moderate';
-    if (kts < 1.2) return 'Strong';
-    return 'Very Strong';
-  }
-
-  function renderDiveSpotCard(spot) {
-    const c = spot.current;
-    const ratingClass = diveRatingClass(c.diveRating);
-    const ratingColor = diveRatingColor(c.diveRating);
-
-    const swellStr = c.swellHeightFt != null
-      ? `${c.swellHeightFt.toFixed(1)} ft ${c.swellDir != null ? degToCompass(c.swellDir) : ''}`
-      : '—';
-
-    const currentStr = currentStrength(c.currentVelocityMs);
-    const currentDirStr = c.currentDir != null ? ` ${degToCompass(c.currentDir)}` : '';
-
-    const vizBarWidth = Math.min(100, Math.round((c.vizFt / 40) * 100));
-
-    return `
-      <div class="dive-spot-card">
-        <div class="dive-card-header">
-          <div class="dive-spot-name">${spot.name}</div>
-          <span class="rating-badge rating-${ratingClass}">${c.diveLabel}</span>
-        </div>
-        <div class="dive-spot-desc">${spot.desc}</div>
-        <div class="dive-stats">
-          <div class="dive-stat">
-            <span class="dive-stat-label">Visibility</span>
-            <span class="dive-stat-value">${c.vizFt} ft</span>
-            <div class="viz-bar-track"><div class="viz-bar-fill" style="width:${vizBarWidth}%;background:${ratingColor}"></div></div>
-          </div>
-          <div class="dive-stat">
-            <span class="dive-stat-label">Swell</span>
-            <span class="dive-stat-value">${swellStr}</span>
-          </div>
-          <div class="dive-stat">
-            <span class="dive-stat-label">Current</span>
-            <span class="dive-stat-value">${currentStr}${currentDirStr}</span>
-          </div>
-        </div>
-      </div>`;
-  }
-
   function renderDiveTimeline(timeline, cameraViz) {
     if (!timeline || timeline.length === 0) return '';
 
@@ -930,9 +856,6 @@
     try {
       const data = await fetch('/api/dive', { signal: (() => { const c = new AbortController(); setTimeout(() => c.abort(), 15000); return c.signal; })() }).then(r => r.json());
 
-      const tempStr = data.waterTempF ? `${data.waterTempF}°F` : '—';
-      const wetsuitStr = data.wetsuitRec || '—';
-
       // Viz: prefer camera analysis, fall back to physics estimate
       const camViz = data.cameraViz;
       const lajolla = (data.spots || []).find(s => s.name === 'La Jolla Cove');
@@ -966,8 +889,6 @@
         </div>`;
 
       const timelineHtml = renderDiveTimeline(data.timeline, camViz);
-      const vizHtml = '';
-
       contentEl.innerHTML = `<div id="scripps-cam-container" class="scripps-cam-container"><div class="scripps-cam-loading"><div class="spinner"></div><p>Loading live cam...</p></div></div>${vizHtml}` + conditionsBar + timelineHtml;
       if (window.lucide) lucide.createIcons();
       loadScrippsCam();
@@ -1001,6 +922,6 @@
   }
 
   // --- Init ---
-  loadData().then(() => { loadSurflineData(); loadTides(); loadSurflineOverlay(); loadForecastText(); });
+  loadData().then(() => { loadSurflineData(); loadTides(); loadForecastText(); });
   setInterval(loadData, REFRESH_INTERVAL);
 })();
