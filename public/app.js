@@ -707,20 +707,27 @@
   // --- Tab switching ---
   let diveLoaded = false;
 
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const tab = btn.dataset.tab;
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b === btn));
-      document.querySelectorAll('.tab-panel').forEach(p => {
-        p.classList.toggle('active', p.id === 'tab-' + tab);
-        p.classList.toggle('hidden', p.id !== 'tab-' + tab);
-      });
-      if (tab === 'dive' && !diveLoaded) {
-        diveLoaded = true;
-        loadDiveData();
-      }
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('.tab-panel').forEach(p => {
+      p.classList.toggle('active', p.id === 'tab-' + tab);
+      p.classList.toggle('hidden', p.id !== 'tab-' + tab);
     });
+    if (tab === 'dive' && !diveLoaded) {
+      diveLoaded = true;
+      loadDiveData();
+    }
+    // Update URL hash without scrolling
+    history.replaceState(null, '', tab === 'surf' ? location.pathname : '#' + tab);
+  }
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
+
+  // Open tab from URL hash on load
+  const hashTab = location.hash.replace('#', '');
+  if (hashTab === 'dive') switchTab('dive');
 
   // --- Dive helpers ---
   function diveRatingColor(rating) {
