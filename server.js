@@ -379,11 +379,40 @@ async function analyzeScrippsViz(streamUrl) {
 
       // Map clarity score to viz estimate
       let vizFt, label, diveRating, diveLabel;
-      if (clarity > 0.40)      { vizFt = 30; label = 'Excellent'; diveRating = 5; diveLabel = 'Excellent'; }
-      else if (clarity > 0.30) { vizFt = 20; label = 'Good';      diveRating = 4; diveLabel = 'Good'; }
-      else if (clarity > 0.22) { vizFt = 12; label = 'Fair';      diveRating = 3; diveLabel = 'Fair'; }
-      else if (clarity > 0.13) { vizFt = 7;  label = 'Poor';      diveRating = 2; diveLabel = 'Poor'; }
-      else                     { vizFt = 3;  label = 'Very Poor';  diveRating = 1; diveLabel = 'Very Poor'; }
+      // Continuous interpolation: clarity 0 → 3ft, clarity 0.55+ → 40ft
+      // Control points: [clarity, vizFt]
+      const VIZ_CURVE = [
+        [0.00,  3],
+        [0.13,  7],
+        [0.22, 12],
+        [0.30, 20],
+        [0.40, 30],
+        [0.55, 40]
+      ];
+      let rawViz;
+      if (clarity <= VIZ_CURVE[0][0]) {
+        rawViz = VIZ_CURVE[0][1];
+      } else if (clarity >= VIZ_CURVE[VIZ_CURVE.length-1][0]) {
+        rawViz = VIZ_CURVE[VIZ_CURVE.length-1][1];
+      } else {
+        for (let i = 0; i < VIZ_CURVE.length - 1; i++) {
+          const [c0, v0] = VIZ_CURVE[i];
+          const [c1, v1] = VIZ_CURVE[i+1];
+          if (clarity >= c0 && clarity < c1) {
+            const t = (clarity - c0) / (c1 - c0);
+            rawViz = v0 + t * (v1 - v0);
+            break;
+          }
+        }
+      }
+      // Round to nearest inch (1/12 ft)
+      vizFt = Math.round(rawViz * 12) / 12;
+
+      if (vizFt >= 30)      { label = 'Excellent'; diveRating = 5; diveLabel = 'Excellent'; }
+      else if (vizFt >= 20) { label = 'Good';      diveRating = 4; diveLabel = 'Good'; }
+      else if (vizFt >= 12) { label = 'Fair';      diveRating = 3; diveLabel = 'Fair'; }
+      else if (vizFt >= 7)  { label = 'Poor';      diveRating = 2; diveLabel = 'Poor'; }
+      else                  { label = 'Very Poor';  diveRating = 1; diveLabel = 'Very Poor'; }
 
       // Cleanup
       for (const f of [tmpTs, tmpJpg, tmpPx]) { try { require('fs').unlinkSync(f); } catch(e){} }

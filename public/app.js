@@ -735,6 +735,15 @@
   const hashTab = location.hash.replace('#', '');
   if (hashTab === 'dive') switchTab('dive');
 
+  // --- Format viz as feet + inches ---
+  function fmtViz(ft) {
+    const wholeFt = Math.floor(ft);
+    const inches = Math.round((ft - wholeFt) * 12);
+    if (inches === 0) return `${wholeFt} ft`;
+    if (inches === 12) return `${wholeFt + 1} ft`;
+    return `${wholeFt} ft ${inches} in`;
+  }
+
   // --- Dive helpers ---
   function diveRatingColor(rating) {
     const colors = ['#1c1c1e', '#ff453a', '#ff9f0a', '#ffd60a', '#a8d844', '#30d158'];
@@ -938,7 +947,7 @@
           ${vizFt != null ? `
           <div class="dive-cond-item">
             <span class="dive-cond-label">Visibility</span>
-            <span class="dive-cond-value" style="color:${vizColor}">${vizFt} ft <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary)">${vizLabel}</span></span>
+            <span class="dive-cond-value" style="color:${vizColor}">${fmtViz(vizFt)} <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary)">${vizLabel}</span></span>
           </div>` : ''}
           ${data.buoy && data.buoy.waveHeightFt ? `
           <div class="dive-cond-item">
@@ -973,7 +982,7 @@
               const valEl = el.closest('.dive-cond-item').querySelector('.dive-cond-value');
               if (valEl) {
                 valEl.style.color = vizColor2;
-                valEl.innerHTML = `${viz.vizFt} ft <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary)">${viz.label}</span>`;
+                valEl.innerHTML = `${fmtViz(viz.vizFt)} <span style="font-size:0.75rem;font-weight:400;color:var(--text-secondary)">${viz.label}</span>`;
               }
               el.innerHTML = "Visibility";
             }
