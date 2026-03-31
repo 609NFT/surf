@@ -867,7 +867,7 @@
         { id: 'p1', label: '4 ft',  x: 95, y: 52, dist: '1.2m' },
         { id: 'p2', label: '11 ft', x: 78, y: 38, dist: '3.4m' },
         { id: 'p3', label: '14 ft', x: 8,  y: 28, dist: '4.3m' },
-        { id: 'p4', label: '30 ft', x: 22, y: 35, dist: '9m'   }
+        { id: 'p4', label: '30 ft', x: 38, y: 35, dist: '9m'   }
       ];
 
       const pilingHtml = PILINGS.map(p => `
