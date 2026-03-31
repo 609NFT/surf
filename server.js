@@ -379,10 +379,10 @@ async function analyzeScrippsViz(streamUrl) {
 
       // Map clarity score to viz estimate
       let vizFt, label, diveRating, diveLabel;
-      if (clarity > 0.45)      { vizFt = 30; label = 'Excellent'; diveRating = 5; diveLabel = 'Excellent'; }
-      else if (clarity > 0.38) { vizFt = 20; label = 'Good';      diveRating = 4; diveLabel = 'Good'; }
-      else if (clarity > 0.28) { vizFt = 12; label = 'Fair';      diveRating = 3; diveLabel = 'Fair'; }
-      else if (clarity > 0.18) { vizFt = 7;  label = 'Poor';      diveRating = 2; diveLabel = 'Poor'; }
+      if (clarity > 0.40)      { vizFt = 30; label = 'Excellent'; diveRating = 5; diveLabel = 'Excellent'; }
+      else if (clarity > 0.30) { vizFt = 20; label = 'Good';      diveRating = 4; diveLabel = 'Good'; }
+      else if (clarity > 0.22) { vizFt = 12; label = 'Fair';      diveRating = 3; diveLabel = 'Fair'; }
+      else if (clarity > 0.13) { vizFt = 7;  label = 'Poor';      diveRating = 2; diveLabel = 'Poor'; }
       else                     { vizFt = 3;  label = 'Very Poor';  diveRating = 1; diveLabel = 'Very Poor'; }
 
       // Cleanup
