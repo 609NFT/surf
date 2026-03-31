@@ -449,6 +449,13 @@ const server = http.createServer(async (req, res) => {
 
   // API routes
   if (pathname === '/api/forecasts') {
+    // Hard timeout — always respond within 25s
+    const reqTimeout = setTimeout(() => {
+      if (!res.headersSent) {
+        res.writeHead(504, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Forecast fetch timed out', spots: [] }));
+      }
+    }, 25000);
     try {
       // Try Surfline first, fall back to Open-Meteo
       let spots;
@@ -471,11 +478,17 @@ const server = http.createServer(async (req, res) => {
         console.log(`Surfline failed (${e.message}), using Open-Meteo`);
         spots = await fetchAllForecasts();
       }
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ spots, source, timestamp: new Date().toISOString() }));
+      clearTimeout(reqTimeout);
+      if (!res.headersSent) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ spots, source, timestamp: new Date().toISOString() }));
+      }
     } catch (e) {
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Internal error' }));
+      clearTimeout(reqTimeout);
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Internal error' }));
+      }
     }
     return;
   }

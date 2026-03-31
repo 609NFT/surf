@@ -146,7 +146,7 @@
 
   async function loadForecastText() {
     try {
-      const r = await fetch('/api/forecast-text');
+      const r = await fetch('/api/forecast-text', { signal: AbortSignal.timeout(8000) });
       const d = await r.json();
       if (!d.headline) return;
       const el = document.getElementById('forecast-text');
@@ -376,9 +376,15 @@
     grid.innerHTML = '';
 
     try {
+      const fetchWithTimeout = (url, ms = 12000) => {
+        const ctrl = new AbortController();
+        const id = setTimeout(() => ctrl.abort(), ms);
+        return fetch(url, { signal: ctrl.signal }).then(r => { clearTimeout(id); return r.json(); });
+      };
+
       const [forecastRes, buoyRes] = await Promise.all([
-        fetch('/api/forecasts').then(r => r.json()),
-        fetch('/api/buoy').then(r => r.json()).catch(() => null)
+        fetchWithTimeout('/api/forecasts', 12000),
+        fetchWithTimeout('/api/buoy', 8000).catch(() => null)
       ]);
 
       renderBuoy(buoyRes);
@@ -555,7 +561,7 @@
 
   async function loadTides() {
     try {
-      const res = await fetch('/api/tides');
+      const res = await fetch('/api/tides', { signal: AbortSignal.timeout(10000) });
       const data = await res.json();
       if (!data.hourly || !data.hilo) return;
 
@@ -855,7 +861,7 @@
     const container = document.getElementById('scripps-cam-container');
     if (!container) return;
     try {
-      const data = await fetch('/api/scripps-cam').then(r => r.json());
+      const data = await fetch('/api/scripps-cam', { signal: AbortSignal.timeout(10000) }).then(r => r.json());
       if (data.error || !data.streamUrl) {
         container.innerHTML = `<div class="scripps-cam-error">Live cam unavailable — <a href="https://hdontap.com/stream/018408/scripps-pier-underwater-live-webcam/" target="_blank">watch on HDOnTap</a></div>`;
         return;
@@ -867,7 +873,7 @@
         { id: 'p1', label: '4 ft',  x: 95, y: 52, dist: '1.2m' },
         { id: 'p2', label: '11 ft', x: 78, y: 38, dist: '3.4m' },
         { id: 'p3', label: '14 ft', x: 8,  y: 28, dist: '4.3m' },
-        { id: 'p4', label: '30 ft', x: 44, y: 35, dist: '9m'   }
+        { id: .p4., label: .30 ft., x: 42, y: 35, dist: .9m.   }
       ];
 
       const pilingHtml = PILINGS.map(p => `
@@ -913,7 +919,7 @@
     contentEl.innerHTML = '';
 
     try {
-      const data = await fetch('/api/dive').then(r => r.json());
+      const data = await fetch('/api/dive', { signal: AbortSignal.timeout(15000) }).then(r => r.json());
 
       const tempStr = data.waterTempF ? `${data.waterTempF}°F` : '—';
       const wetsuitStr = data.wetsuitRec || '—';
